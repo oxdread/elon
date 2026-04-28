@@ -529,7 +529,19 @@ export default function TradePage() {
                   <div key={b.id}
                     className={`flex items-center px-3 py-1 cursor-pointer transition-colors border-b border-[#131313]/40
                       ${isSelected ? "bg-blue-500/8" : "hover:bg-white/[0.02]"}`}
-                    onClick={() => setSelectedBracket(isSelected ? null : b.id)}>
+                    onClick={async () => {
+                      const newSel = isSelected ? null : b.id;
+                      setSelectedBracket(newSel);
+                      // If selecting a bracket not in current history, fetch its data
+                      if (newSel && !history.some((h) => h.bracket === newSel)) {
+                        const from24h = Math.floor(Date.now() / 1000) - 86400;
+                        try {
+                          const r = await fetch(`/api/history?bracket_id=${newSel}&from=${from24h}`, { cache: "no-store" });
+                          const d = await r.json();
+                          if (!d.error && d.series) setHistory((prev) => [...prev, ...d.series]);
+                        } catch {}
+                      }
+                    }}>
                     <div className="flex-1 min-w-0">
                       <span className={`text-xs font-bold ${isSelected ? "text-[#3b82f6]" : isActive ? "text-[#3b82f6]" : isPast ? "text-[#222222]" : "text-[#e5e5e5]"}`}>
                         {b.label}
