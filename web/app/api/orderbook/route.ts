@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/db";
+import { query } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
@@ -11,13 +11,11 @@ export async function GET(req: NextRequest) {
     }
 
     // Try cache first
-    let query = supabase.from("orderbook_cache").select("*");
-    if (bracketId) {
-      query = query.eq("bracket_id", bracketId);
-    } else {
-      query = query.eq("token_id", tokenId!);
-    }
-    const { data } = await query.single();
+    const { rows } = bracketId
+      ? await query(`SELECT * FROM orderbook_cache WHERE bracket_id = $1 LIMIT 1`, [bracketId])
+      : await query(`SELECT * FROM orderbook_cache WHERE token_id = $1 LIMIT 1`, [tokenId]);
+
+    const data = rows[0];
 
     if (data) {
       return NextResponse.json({

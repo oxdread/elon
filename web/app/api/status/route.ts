@@ -1,28 +1,26 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db";
+import { query } from "@/lib/db";
 
 export async function GET() {
   try {
-    const { data: status } = await supabase
-      .from("collector_status")
-      .select("*")
-      .eq("id", 1)
-      .single();
+    const { rows: statusRows } = await query(
+      `SELECT * FROM collector_status WHERE id = 1`
+    );
 
-    const { data: tweetCounts } = await supabase
-      .from("tweet_counts")
-      .select("count");
+    const { rows: tweetCounts } = await query(
+      `SELECT count FROM tweet_counts`
+    );
 
-    const totalTweets = (tweetCounts || []).reduce((a: number, b: { count: number }) => a + b.count, 0);
+    const totalTweets = tweetCounts.reduce((a: number, b: { count: number }) => a + b.count, 0);
 
-    const { count: snapshotCount } = await supabase
-      .from("price_snapshots")
-      .select("*", { count: "exact", head: true });
+    const { rows: snapshotRows } = await query(
+      `SELECT COUNT(*)::int AS cnt FROM price_snapshots`
+    );
 
     return NextResponse.json({
-      collector: status ?? null,
+      collector: statusRows[0] ?? null,
       tweet_count: totalTweets,
-      snapshot_count: snapshotCount ?? 0,
+      snapshot_count: snapshotRows[0]?.cnt ?? 0,
     });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });

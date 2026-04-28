@@ -1,6 +1,21 @@
-import { createClient } from "@supabase/supabase-js";
+import { Pool } from "pg";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://smatbeowzfqsvxdkynjw.supabase.co";
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_azyk6PpAemo4pk3PJp66qg_pUoinkkk";
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://elontrader:elontrader123@localhost:5432/elontrader";
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+let pool: Pool;
+
+export function getPool(): Pool {
+  if (!pool) {
+    pool = new Pool({ connectionString: DATABASE_URL, max: 10 });
+  }
+  return pool;
+}
+
+export async function query(text: string, params?: unknown[]) {
+  const client = await getPool().connect();
+  try {
+    return await client.query(text, params);
+  } finally {
+    client.release();
+  }
+}

@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/db";
+import { query } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
     // Try cache first
-    const { data } = await supabase
-      .from("comments_cache")
-      .select("comments, updated_at")
-      .eq("id", 1)
-      .single();
+    const { rows } = await query(
+      `SELECT comments, updated_at FROM comments_cache WHERE id = 1`
+    );
 
+    const data = rows[0];
     if (data && data.comments) {
       return NextResponse.json(data.comments);
     }

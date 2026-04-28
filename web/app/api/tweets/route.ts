@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/db";
+import { query } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
@@ -7,32 +7,47 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(parseInt(url.searchParams.get("limit") || "50"), 200);
     const offset = parseInt(url.searchParams.get("offset") || "0");
 
-    const { data: tweets, count } = await supabase
-      .from("tweets")
-      .select("*", { count: "exact" })
-      .order("ts", { ascending: false })
-      .range(offset, offset + limit - 1);
+    const { rows: countRows } = await query(
+      `SELECT COUNT(*)::int AS total FROM tweets`
+    );
+    const total = countRows[0]?.total ?? 0;
 
-    // For each tweet, get price snapshots
-    const result = [];
-    for (const t of tweets || []) {
-      const { data: prices } = await supabase
-        .from("price_snapshots")
-        .select("bracket_id, mid, bid, ask, brackets!inner(label, lower_bound)")
-        .eq("tweet_id", t.id)
-        .order("brackets(lower_bound)");
+    const { rows: tweets } = await query(
+      `SELECT * FROM tweets ORDER BY ts DESC LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
 
-      result.push({
-        ...t,
-        prices: (prices || []).map((p: Record<string, unknown>) => {
-          const b = p.brackets as unknown as { label: string } | { label: string }[] | undefined;
-          const label = Array.isArray(b) ? b[0]?.label ?? "" : b?.label ?? "";
-          return { label, mid: p.mid, bid: p.bid, ask: p.ask };
-        }),
-      });
+    // For each tweet, get price snapshots with bracket label
+    const tweetIds = tweets.map((t: { id: string }) => t.id);
+    let pricesByTweet: Record<string, { label: string; mid: number | null; bid: number | null; ask: number | null }[]> = {};
+
+    if (tweetIds.length > 0) {
+      const { rows: prices } = await query(
+        `SELECT ps.tweet_id, ps.mid, ps.bid, ps.ask, b.label, b.lower_bound
+         FROM price_snapshots ps
+         JOIN brackets b ON b.id = ps.bracket_id
+         WHERE ps.tweet_id = ANY($1)
+         ORDER BY b.lower_bound`,
+        [tweetIds]
+      );
+
+      for (const p of prices) {
+        if (!pricesByTweet[p.tweet_id]) pricesByTweet[p.tweet_id] = [];
+        pricesByTweet[p.tweet_id].push({
+          label: p.label,
+          mid: p.mid,
+          bid: p.bid,
+          ask: p.ask,
+        });
+      }
     }
 
-    return NextResponse.json({ tweets: result, total: count ?? 0 });
+    const result = tweets.map((t: { id: string }) => ({
+      ...t,
+      prices: pricesByTweet[t.id] || [],
+    }));
+
+    return NextResponse.json({ tweets: result, total });
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

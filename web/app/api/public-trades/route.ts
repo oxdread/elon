@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/db";
+import { query } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
@@ -10,12 +10,12 @@ export async function GET(req: NextRequest) {
     }
 
     // Try cache first
-    const { data } = await supabase
-      .from("public_trades_cache")
-      .select("trades, updated_at")
-      .eq("bracket_id", conditionId)
-      .single();
+    const { rows } = await query(
+      `SELECT trades, updated_at FROM public_trades_cache WHERE bracket_id = $1 LIMIT 1`,
+      [conditionId]
+    );
 
+    const data = rows[0];
     if (data && data.trades) {
       return NextResponse.json(data.trades);
     }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/db";
+import { query } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
@@ -38,16 +38,14 @@ export async function GET(req: NextRequest) {
     const rangeStart = days.length > 0 ? days[0].startUtc : 0;
     const rangeEnd = days.length > 0 ? days[days.length - 1].endUtc : Math.floor(nowMs / 1000);
 
-    const { data: tweets } = await supabase
-      .from("tweets")
-      .select("ts")
-      .gte("ts", rangeStart)
-      .lt("ts", rangeEnd)
-      .order("ts");
+    const { rows: tweets } = await query(
+      `SELECT ts FROM tweets WHERE ts >= $1 AND ts < $2 ORDER BY ts`,
+      [rangeStart, rangeEnd]
+    );
 
     return NextResponse.json({
       days,
-      tweets: (tweets || []).map((t: { ts: number }) => t.ts),
+      tweets: tweets.map((t: { ts: number }) => t.ts),
       et_offset_hours: ET_OFFSET_HOURS,
     });
   } catch (e) {
