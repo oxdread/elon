@@ -210,38 +210,23 @@ export default function TradePage() {
     } catch {}
   }, []);
 
-  const handleTradeComplete = useCallback((trade: { tokenId: string; side: string; size: number; price: number }) => {
-    // Block regular polls from overwriting optimistic data for 8s
-    tradeBlockUntilRef.current = Date.now() + 8000;
-    // Optimistic local update — adjust positions immediately
-    setPositionsData((prev) => {
-      const existing = prev.find((p) => p.asset === trade.tokenId);
-      if (trade.side === "BUY") {
-        if (existing) {
-          const newSize = parseFloat(existing.size || 0) + trade.size;
-          const oldValue = parseFloat(existing.currentValue || 0);
-          return prev.map((p) => p.asset === trade.tokenId
-            ? { ...p, size: String(newSize), currentValue: String(oldValue + trade.size * trade.price) }
-            : p
-          );
-        }
-        return [...prev, { asset: trade.tokenId, size: String(trade.size), curPrice: String(trade.price), currentValue: String(trade.size * trade.price), outcome: "Yes" }];
-      } else {
-        if (existing) {
-          const newSize = Math.max(0, parseFloat(existing.size || 0) - trade.size);
-          if (newSize <= 0) return prev.filter((p) => p.asset !== trade.tokenId);
-          const oldValue = parseFloat(existing.currentValue || 0);
-          return prev.map((p) => p.asset === trade.tokenId
-            ? { ...p, size: String(newSize), currentValue: String(Math.max(0, oldValue - trade.size * trade.price)) }
-            : p
-          );
-        }
-        return prev;
-      }
-    });
-    // Delayed force refreshes — give Polymarket time to reflect the trade
-    setTimeout(() => refreshWallet(true), 4000);
-    setTimeout(() => refreshWallet(true), 8000);
+  const handleTradeComplete = useCallback(async () => {
+    // Block regular polls from overwriting during refresh
+    tradeBlockUntilRef.current = Date.now() + 10000;
+    // Wait 3s for Polymarket to reflect, then force refresh positions + orderbooks
+    await new Promise((r) => setTimeout(r, 3000));
+    const refreshAll = async () => {
+      await refreshWallet(true);
+      try {
+        const booksRes = await fetch("/api/orderbooks-all?force=1", { cache: "no-store" }).then((r) => r.json());
+        if (booksRes && !booksRes.error) setAllOrderbooks(booksRes);
+      } catch {}
+    };
+    await refreshAll();
+    // Again after another 3s
+    await new Promise((r) => setTimeout(r, 3000));
+    await refreshAll();
+    tradeBlockUntilRef.current = 0;
   }, [refreshWallet]);
 
   useEffect(() => {

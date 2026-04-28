@@ -1,11 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
 let cache: { data: unknown; ts: number } | null = null;
 
-export async function GET() {
-  // Cache for 5 seconds
-  if (cache && Date.now() - cache.ts < 5000) {
+export async function GET(req: NextRequest) {
+  const force = req.nextUrl.searchParams.get("force") === "1";
+  // Cache for 5 seconds unless force
+  if (!force && cache && Date.now() - cache.ts < 5000) {
     return NextResponse.json(cache.data);
   }
   try {

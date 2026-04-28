@@ -15,7 +15,7 @@ export default function TradingPanel({
   initialAction?: "buy" | "sell";
   initialAmount?: string;
   onOutcomeChange?: (outcome: "yes" | "no") => void;
-  onTradeComplete?: (trade: { tokenId: string; side: string; size: number; price: number }) => void;
+  onTradeComplete?: () => Promise<void>;
 }) {
   const [action, setAction] = useState<"buy" | "sell">("buy");
   const [outcome, setOutcome] = useState<"yes" | "no">("yes");
@@ -24,6 +24,7 @@ export default function TradingPanel({
   const [amount, setAmount] = useState("");
   const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState("");
   const [result, setResult] = useState<{ status?: string; error?: string } | null>(null);
 
   // Sync from orderbook click
@@ -102,6 +103,7 @@ export default function TradingPanel({
     const key = localStorage.getItem("poly_private_key")!;
     const funder = localStorage.getItem("poly_funder") || "";
     setLoading(true);
+    setLoadingMsg("Placing order...");
     setResult(null);
     try {
       const side = action === "buy" ? "BUY" : "SELL";
@@ -124,22 +126,20 @@ export default function TradingPanel({
         body: JSON.stringify(body),
       });
       const d = await r.json();
-      setResult(d);
       if (d.status === "ok") {
-        onTradeComplete?.({
-          tokenId: bracket.yes_token_id!,
-          side: side,
-          size: shares,
-          price: priceNum / 100,
-        });
+        setLoadingMsg("Order placed! Updating data...");
+        try { await onTradeComplete?.(); } catch {}
+        setResult({ status: "ok" });
+      } else {
+        setResult(d);
       }
-      // Auto-dismiss after 3 seconds
       setTimeout(() => setResult(null), 3000);
     } catch (e) {
       setResult({ error: String(e) });
       setTimeout(() => setResult(null), 5000);
     }
     setLoading(false);
+    setLoadingMsg("");
   };
 
   if (!bracket) {
@@ -271,7 +271,7 @@ export default function TradingPanel({
             disabled={!hasKey || loading || total <= 0}
             className="w-full py-3 rounded-lg font-bold text-sm bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            {loading ? "Placing..." :
+            {loading ? loadingMsg || "Processing..." :
               !hasKey ? "Import key in Settings" :
               `Place ${action} order`}
           </button>
