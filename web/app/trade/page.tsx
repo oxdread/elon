@@ -59,21 +59,8 @@ export default function TradePage() {
   const prevEventRef = useRef<string | null>(null);
   const isUserScaled = useRef(false);
 
-  // Pre-load notification sound — needs user interaction first
+  // Pre-load notification sound
   const notifyAudioRef = useRef<HTMLAudioElement | null>(null);
-  useEffect(() => {
-    const audio = new Audio("/notify.wav");
-    audio.volume = 0.5;
-    audio.load();
-    notifyAudioRef.current = audio;
-    // Unlock audio on first click
-    const unlock = () => {
-      audio.play().then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
-      document.removeEventListener("click", unlock);
-    };
-    document.addEventListener("click", unlock);
-    return () => document.removeEventListener("click", unlock);
-  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -490,6 +477,7 @@ export default function TradePage() {
 
   return (
     <div className="flex flex-col h-full bg-[#060606] p-1 gap-1 relative">
+      <audio ref={notifyAudioRef} src="/notify.wav" preload="auto" />
       <Toaster position="bottom-right" toastOptions={{ style: { background: "#141414", color: "#e5e5e5" } }} />
       {/* Main grid — no top bar */}
       <div className="flex-1 flex min-h-0 gap-2">
