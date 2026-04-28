@@ -42,7 +42,7 @@ export default function TradePage() {
   const [tradeAmount, setTradeAmount] = useState<string>("");
 
   // Pre-fetch all bottom panel data so switching tabs is instant
-  const [bookData, setBookData] = useState<{ bids: { price: string; size: string }[]; asks: { price: string; size: string }[] } | null>(null);
+  const [allOrderbooks, setAllOrderbooks] = useState<Record<string, { bids: unknown[]; asks: unknown[]; best_bid: number; best_ask: number }>>({});
   const [tradesData, setTradesData] = useState<unknown[] | null>(null);
   const [commentsData, setCommentsData] = useState<unknown[] | null>(null);
   const [tweetLog, setTweetLog] = useState<{ id: string; ts: number; text: string }[]>([]);
@@ -167,7 +167,9 @@ export default function TradePage() {
   const fetchHistory = useCallback(async () => {
     if (!selectedEvent) return;
     try {
-      const r = await fetch(`/api/history?event_id=${selectedEvent}`, { cache: "no-store" });
+      // Default: last 24h only (fast). User can click "All" for full history.
+      const from24h = Math.floor(Date.now() / 1000) - 86400;
+      const r = await fetch(`/api/history?event_id=${selectedEvent}&from=${from24h}`, { cache: "no-store" });
       const d = await r.json();
       if (!d.error) setHistory(d.series ?? []);
     } catch {}
@@ -191,19 +193,16 @@ export default function TradePage() {
     const conditionId = activeBracketForPanel.id;
 
     const fetchAll = async () => {
-      // Fetch all three in parallel
-      const [bookRes, tradesRes, commentsRes, tweetsRes] = await Promise.allSettled([
-        tokenId ? fetch(`/api/orderbook?token_id=${tokenId}`, { cache: "no-store" }).then((r) => r.json()) : Promise.resolve(null),
+      // Fetch all in parallel — orderbooks bulk, trades, comments, tweets
+      const [allBooksRes, tradesRes, commentsRes, tweetsRes] = await Promise.allSettled([
+        fetch("/api/orderbooks-all", { cache: "no-store" }).then((r) => r.json()),
         fetch(`/api/public-trades?condition_id=${conditionId}&limit=30`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
         fetch("/api/comments?limit=30", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
         fetch("/api/tweets?limit=30", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
       ]);
 
-      if (bookRes.status === "fulfilled" && bookRes.value && !bookRes.value.error) {
-        const d = bookRes.value;
-        const bids = (d.bids || []).sort((a: {price:string}, b: {price:string}) => parseFloat(b.price) - parseFloat(a.price));
-        const asks = (d.asks || []).sort((a: {price:string}, b: {price:string}) => parseFloat(a.price) - parseFloat(b.price));
-        setBookData({ bids, asks });
+      if (allBooksRes.status === "fulfilled" && allBooksRes.value && !allBooksRes.value.error) {
+        setAllOrderbooks(allBooksRes.value);
       }
       if (tradesRes.status === "fulfilled" && Array.isArray(tradesRes.value)) setTradesData(tradesRes.value);
       if (commentsRes.status === "fulfilled" && Array.isArray(commentsRes.value)) setCommentsData(commentsRes.value);
@@ -560,12 +559,25 @@ export default function TradePage() {
                   { label: "1W", seconds: 86400 * 7 },
                   { label: "All", seconds: 0 },
                 ].map((tf) => (
-                  <button key={tf.label} onClick={() => {
+                  <button key={tf.label} onClick={async () => {
                     const chart = chartRef.current;
                     if (!chart) return;
-                    if (tf.seconds === 0) { chart.timeScale().fitContent(); }
-                    else {
+                    if (tf.seconds === 0) {
+                      // Fetch ALL history
+                      if (selectedEvent) {
+                        const r = await fetch(`/api/history?event_id=${selectedEvent}`, { cache: "no-store" });
+                        const d = await r.json();
+                        if (!d.error) setHistory(d.series ?? []);
+                      }
+                      chart.timeScale().fitContent();
+                    } else {
+                      // Fetch only the needed range
                       const n = Math.floor(Date.now() / 1000);
+                      if (selectedEvent) {
+                        const r = await fetch(`/api/history?event_id=${selectedEvent}&from=${n - tf.seconds}`, { cache: "no-store" });
+                        const d = await r.json();
+                        if (!d.error) setHistory(d.series ?? []);
+                      }
                       try { chart.timeScale().setVisibleRange({
                         from: (n - tf.seconds) as unknown as import("lightweight-charts").UTCTimestamp,
                         to: n as unknown as import("lightweight-charts").UTCTimestamp,
@@ -585,10 +597,11 @@ export default function TradePage() {
                 if (!bracket) return <div className="flex items-center justify-center h-full text-[#555555] text-xs">Select bracket</div>;
                 const tokenId = tradeOutcome === "yes" ? bracket.yes_token_id : bracket.no_token_id;
                 if (!tokenId) return <div className="flex items-center justify-center h-full text-[#555555] text-xs">No token</div>;
+                const cachedBook = allOrderbooks[bracket.id];
                 return <OrderBook
                   tokenId={tokenId}
                   label={`${bracket.label} ${tradeOutcome.toUpperCase()}`}
-                  initialData={tradeOutcome === "yes" ? bookData : undefined}
+                  initialData={cachedBook ? { bids: cachedBook.bids as any, asks: cachedBook.asks as any } : undefined}
                   outcome={tradeOutcome}
                   onClickOrder={(side, price, size) => {
                     setTradeAction(side);
