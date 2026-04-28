@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { execSync } from "child_process";
 import path from "path";
+import { query } from "@/lib/db";
 
 const PYTHON = path.join(process.cwd(), "..", ".venv", "bin", "python3");
+const CWD = path.join(process.cwd(), "..");
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +19,7 @@ export async function POST(req: NextRequest) {
     if (order_type === "limit" && price && size) {
       pyCode = `
 import json, sys
-sys.path.insert(0, "${path.join(process.cwd(), "..")}")
+sys.path.insert(0, "${CWD}")
 from collector.trading import place_limit_order
 r = place_limit_order(
     private_key="${private_key}",
@@ -32,7 +34,7 @@ print(json.dumps(r))
     } else {
       pyCode = `
 import json, sys
-sys.path.insert(0, "${path.join(process.cwd(), "..")}")
+sys.path.insert(0, "${CWD}")
 from collector.trading import place_market_order
 r = place_market_order(
     private_key="${private_key}",
@@ -48,10 +50,22 @@ print(json.dumps(r))
     const result = execSync(`${PYTHON} -c '${pyCode.replace(/'/g, "'\\''")}'`, {
       timeout: 15000,
       encoding: "utf-8",
-      cwd: path.join(process.cwd(), ".."),
+      cwd: CWD,
     });
 
-    return NextResponse.json(JSON.parse(result.trim()));
+    const parsed = JSON.parse(result.trim());
+
+    // On success, invalidate wallet cache so next poll fetches fresh data
+    if (parsed.status === "ok" && funder) {
+      try {
+        await query(
+          "UPDATE wallet_cache SET updated_at = 0 WHERE funder = $1",
+          [funder]
+        );
+      } catch {}
+    }
+
+    return NextResponse.json(parsed);
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
