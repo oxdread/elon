@@ -181,13 +181,17 @@ def main():
     else:
         print("[main] WARNING: no token IDs found, WS not started")
 
-    # --- Start Twitter stream ---
-    twitter_stream.start(on_tweet=lambda t: _handle_tweet(t, conn))
-
-    # --- Start cache collector (orderbooks, trades, comments) ---
+    # --- Configure clob_feed for DB orderbook flushing ---
     import os
     db_url = os.environ.get("DATABASE_URL", "")
     all_bracket_dicts = [dict(r) for r in get_brackets(conn)]
+    clob_feed.set_db_url(db_url)
+    clob_feed.set_bracket_mapping(all_bracket_dicts)
+
+    # --- Start Twitter stream ---
+    twitter_stream.start(on_tweet=lambda t: _handle_tweet(t, conn))
+
+    # --- Start cache collector (trades, comments) ---
     start_cache_collector(db_url, all_bracket_dicts)
     print(f"[main] cache collector started for {len(all_bracket_dicts)} brackets")
 
@@ -205,6 +209,7 @@ def main():
                     new_brackets, new_tokens = _do_discovery(client, conn)
                     if new_tokens:
                         clob_feed.set_tokens(new_tokens)
+                        clob_feed.set_bracket_mapping([dict(r) for r in get_brackets(conn)])
                     all_brackets = new_brackets
                     token_ids = new_tokens
                 except Exception as e:
