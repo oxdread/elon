@@ -165,8 +165,8 @@ def main():
     signal.signal(signal.SIGTERM, lambda *_: _set_stop())
     signal.signal(signal.SIGINT, lambda *_: _set_stop())
 
-    init_db(conn)
     conn = connect()
+    init_db(conn)
     client = httpx.Client()
 
     # --- Discover all events + brackets ---
