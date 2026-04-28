@@ -165,7 +165,7 @@ def main():
     signal.signal(signal.SIGTERM, lambda *_: _set_stop())
     signal.signal(signal.SIGINT, lambda *_: _set_stop())
 
-    init_db()
+    init_db(conn)
     conn = connect()
     client = httpx.Client()
 
