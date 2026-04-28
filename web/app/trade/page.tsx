@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import toast, { Toaster } from "react-hot-toast";
 import {
   createChart, ColorType, LineType, AreaSeries, LineSeries,
   type IChartApi, type ISeriesApi, type SeriesType,
@@ -49,7 +50,6 @@ export default function TradePage() {
   const [positionsData, setPositionsData] = useState<any[]>([]);
   const [openOrders, setOpenOrders] = useState<any[]>([]);
   const [posTab, setPosTab] = useState<"positions" | "orders" | "history">("positions");
-  const [tweetPopup, setTweetPopup] = useState<string | null>(null);
   const prevTweetIdRef = useRef<string | null>(null);
 
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -130,9 +130,12 @@ export default function TradePage() {
       if (tweetsRes.status === "fulfilled" && tweetsRes.value?.tweets) {
         const newTweets = tweetsRes.value.tweets;
         if (newTweets.length > 0 && prevTweetIdRef.current && newTweets[0].id !== prevTweetIdRef.current) {
-          // New tweet detected — show popup
-          setTweetPopup(newTweets[0].text);
-          setTimeout(() => setTweetPopup(null), 5000);
+          toast(newTweets[0].text.slice(0, 120), {
+            duration: 5000,
+            position: "bottom-right",
+            icon: "𝕏",
+            style: { background: "#141414", color: "#e5e5e5", border: "1px solid #252525", fontSize: "12px", maxWidth: "360px" },
+          });
         }
         if (newTweets.length > 0) prevTweetIdRef.current = newTweets[0].id;
         setTweetLog(newTweets);
@@ -398,15 +401,7 @@ export default function TradePage() {
 
   return (
     <div className="flex flex-col h-full bg-[#060606] p-1 gap-1 relative">
-      {/* New tweet popup */}
-      {tweetPopup && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 animate-pulse">
-          <div className="bg-[#3b82f6] text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 max-w-lg">
-            <span className="text-sm">🐦</span>
-            <span className="text-xs font-medium truncate">New Tweet: {tweetPopup.slice(0, 80)}{tweetPopup.length > 80 ? "..." : ""}</span>
-          </div>
-        </div>
-      )}
+      <Toaster />
       {/* Main grid — no top bar */}
       <div className="flex-1 flex min-h-0 gap-2">
 
@@ -557,10 +552,8 @@ export default function TradePage() {
                     return (
                       <div key={t.id} className="px-3 py-2 border-b border-[#1a1a1a]/40 hover:bg-[#131313] transition-colors">
                         <div className="flex gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-[#1a1a1a] shrink-0 flex items-center justify-center overflow-hidden">
-                            <img src="https://pbs.twimg.com/profile_images/1845482317292coolkid/JZHHK9Ri_normal.jpg" alt="" className="w-full h-full object-cover"
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                            <span className="text-[#555555] text-xs">E</span>
+                          <div className="w-8 h-8 rounded-full bg-[#1a1a1a] shrink-0 overflow-hidden">
+                            <img src="https://cdn.britannica.com/05/236505-050-17B6E34A/Elon-Musk-2022.jpg" alt="Elon" className="w-full h-full object-cover" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5">

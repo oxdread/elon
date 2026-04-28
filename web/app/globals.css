@@ -32,3 +32,8 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #1c1c1c; }
 
 select option { background: #0d0d0d; }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
