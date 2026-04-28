@@ -11,8 +11,9 @@ export async function GET(req: NextRequest) {
     const eventId = url.searchParams.get("event_id");
     const bracketId = url.searchParams.get("bracket_id");
     const from = url.searchParams.get("from");
+    const top = url.searchParams.get("top"); // only return top N brackets by price
 
-    const cacheKey = `${eventId || ""}:${bracketId || ""}:${from || ""}`;
+    const cacheKey = `${eventId || ""}:${bracketId || ""}:${from || ""}:${top || ""}`;
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.ts < CACHE_TTL) {
       return NextResponse.json(cached.data);
@@ -22,23 +23,55 @@ export async function GET(req: NextRequest) {
     let rows: Row[] = [];
 
     if (eventId) {
+      // If top=N, first find which brackets to include
+      let bracketFilter = "";
+      const params: unknown[] = [eventId];
+
+      if (top) {
+        const { rows: topBrackets } = await query(
+          `SELECT bracket_id FROM orderbook_cache ob
+           JOIN brackets b ON b.id = ob.bracket_id
+           WHERE b.event_id = $1 AND ob.best_ask IS NOT NULL
+           ORDER BY (COALESCE(ob.best_bid,0) + COALESCE(ob.best_ask,0))/2 DESC
+           LIMIT $2`,
+          [eventId, parseInt(top)]
+        );
+        if (topBrackets.length > 0) {
+          const ids = topBrackets.map((r: { bracket_id: string }) => r.bracket_id);
+          bracketFilter = ` AND ps.bracket_id = ANY($${params.length + 1})`;
+          params.push(ids);
+        }
+      }
+
       if (from) {
-        // Fast path: filtered by time
+        params.push(parseInt(from));
         const { rows: data } = await query(
           `SELECT ps.bracket_id, b.label, ps.ts, ps.mid, ps.trigger
            FROM price_snapshots ps
            JOIN brackets b ON b.id = ps.bracket_id
-           WHERE b.event_id = $1 AND ps.ts >= $2
+           WHERE b.event_id = $1${bracketFilter} AND ps.ts >= $${params.length}
            ORDER BY ps.ts ASC`,
-          [eventId, parseInt(from)]
+          params
         );
         rows = data as Row[];
       } else {
-        const { rows: data } = await query(
-          `SELECT * FROM get_history_by_event($1)`,
-          [eventId]
-        );
-        rows = data as Row[];
+        if (bracketFilter) {
+          const { rows: data } = await query(
+            `SELECT ps.bracket_id, b.label, ps.ts, ps.mid, ps.trigger
+             FROM price_snapshots ps
+             JOIN brackets b ON b.id = ps.bracket_id
+             WHERE b.event_id = $1${bracketFilter}
+             ORDER BY ps.ts ASC`,
+            params
+          );
+          rows = data as Row[];
+        } else {
+          const { rows: data } = await query(
+            `SELECT * FROM get_history_by_event($1)`,
+            [eventId]
+          );
+          rows = data as Row[];
+        }
       }
     } else if (bracketId) {
       const { rows: data } = await query(

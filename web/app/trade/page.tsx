@@ -172,7 +172,7 @@ export default function TradePage() {
     setHistoryLoading(true);
     try {
       const from24h = Math.floor(Date.now() / 1000) - 86400;
-      const r = await fetch(`/api/history?event_id=${selectedEvent}&from=${from24h}`, { cache: "no-store" });
+      const r = await fetch(`/api/history?event_id=${selectedEvent}&from=${from24h}&top=5`, { cache: "no-store" });
       const d = await r.json();
       if (!d.error) setHistory(d.series ?? []);
     } catch {}
@@ -579,7 +579,7 @@ export default function TradePage() {
                       // Fetch only the needed range
                       const n = Math.floor(Date.now() / 1000);
                       if (selectedEvent) {
-                        const r = await fetch(`/api/history?event_id=${selectedEvent}&from=${n - tf.seconds}`, { cache: "no-store" });
+                        const r = await fetch(`/api/history?event_id=${selectedEvent}&from=${n - tf.seconds}&top=5`, { cache: "no-store" });
                         const d = await r.json();
                         if (!d.error) setHistory(d.series ?? []);
                       }
