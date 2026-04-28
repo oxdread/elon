@@ -1,0 +1,18 @@
+[Unit]
+Description=Polymarket backtest dashboard (Next.js)
+After=network-online.target backtest-fetcher.service
+
+[Service]
+Type=simple
+User=backtest
+WorkingDirectory=/home/backtest/app/web
+Environment=NODE_ENV=production
+Environment=PORT=3000
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

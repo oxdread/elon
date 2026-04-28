@@ -1,0 +1,18 @@
+[Unit]
+Description=Polymarket BTC 5m fetcher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=backtest
+WorkingDirectory=/home/backtest/app
+EnvironmentFile=-/home/backtest/app/.env
+ExecStart=/home/backtest/app/.venv/bin/python -m collector.fetcher
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

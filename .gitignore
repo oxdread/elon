@@ -1,0 +1,13 @@
+.venv/                                               
+__pycache__/                                         
+*.pyc                                              
+.env                                                 
+data/*.db                                          
+data/*.db-shm
+data/*.db-wal                                        
+data/*.db-journal
+web/node_modules/                                    
+web/.next/                                           
+web/out/
+conversation-log.txt                                 
+.claude/    
