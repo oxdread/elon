@@ -274,7 +274,7 @@ export default function TradePage() {
     fetchOrderbooks();
     fetchRest();
     const obId = setInterval(fetchOrderbooks, 1000);
-    const restId = setInterval(fetchRest, 5000);
+    const restId = setInterval(fetchRest, 1000);
     return () => { clearInterval(obId); clearInterval(restId); };
   }, [activeBracketForPanel?.id, activeBracketForPanel?.yes_token_id]);
 
