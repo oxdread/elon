@@ -1,7 +1,7 @@
 """Multi-token CLOB WebSocket — subscribes to all bracket YES tokens at once.
 
 Maintains a dict of {token_id: {mid, bid, ask, updated_at}} shared state.
-Also flushes full orderbook data to orderbook_cache DB every ~500ms.
+Also flushes orderbook data to DB every ~1s and trades via last_trade_price events.
 Call set_tokens() when brackets are discovered/updated to trigger reconnect.
 """
 from __future__ import annotations
@@ -31,6 +31,10 @@ _books_lock = threading.Lock()
 # Bracket mapping and DB config
 _token_to_bracket: dict[str, str] = {}  # {token_id: bracket_id}
 _db_url: Optional[str] = None
+
+# Trade events from last_trade_price
+_trades: dict[str, list] = {}  # {token_id: [{price, size, side, timestamp}, ...]}
+_trades_lock = threading.Lock()
 
 
 def latest_prices() -> dict[str, dict]:
@@ -88,8 +92,8 @@ def _compute_mid(bids: dict, asks: dict) -> tuple[Optional[float], Optional[floa
     return mid, best_bid, best_ask
 
 
-def _flush_orderbooks_to_db() -> None:
-    """Flush in-memory orderbooks to orderbook_cache table."""
+def _flush_to_db() -> None:
+    """Flush in-memory orderbooks and trades to DB."""
     if not _db_url or not _token_to_bracket:
         return
 
@@ -100,8 +104,10 @@ def _flush_orderbooks_to_db() -> None:
         conn.autocommit = True
         cur = conn.cursor()
         now = int(time.time())
-        count = 0
+        ob_count = 0
+        tr_count = 0
 
+        # --- Orderbooks ---
         with _books_lock:
             snapshot = {tid: {"bids": dict(b["bids"]), "asks": dict(b["asks"])} for tid, b in _books.items()}
 
@@ -113,7 +119,6 @@ def _flush_orderbooks_to_db() -> None:
             bids = book["bids"]
             asks = book["asks"]
 
-            # Sort and limit to top 30 levels
             bids_sorted = sorted(
                 [{"price": p, "size": str(s)} for p, s in bids.items() if s > 0],
                 key=lambda x: -float(x["price"])
@@ -136,24 +141,41 @@ def _flush_orderbooks_to_db() -> None:
                     spread = EXCLUDED.spread, updated_at = EXCLUDED.updated_at
             """, (bracket_id, tid, json.dumps(bids_sorted), json.dumps(asks_sorted),
                   best_bid, best_ask, spread, now))
-            count += 1
+            ob_count += 1
+
+        # --- Trades ---
+        with _trades_lock:
+            trades_snapshot = {tid: list(trades) for tid, trades in _trades.items() if trades}
+
+        for tid, trades in trades_snapshot.items():
+            bracket_id = _token_to_bracket.get(tid)
+            if not bracket_id:
+                continue
+
+            cur.execute("""
+                INSERT INTO public_trades_cache (bracket_id, condition_id, trades, updated_at)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (bracket_id) DO UPDATE SET
+                    trades = EXCLUDED.trades, updated_at = EXCLUDED.updated_at
+            """, (bracket_id, bracket_id, json.dumps(trades), now))
+            tr_count += 1
 
         cur.close()
         conn.close()
 
-        if count > 0:
-            print(f"[clob-ws] flushed {count} orderbooks to DB")
+        if ob_count > 0 or tr_count > 0:
+            print(f"[clob-ws] flushed {ob_count} orderbooks, {tr_count} trades to DB")
 
     except Exception as e:
         print(f"[clob-ws] DB flush error: {e}")
 
 
 async def _db_flusher():
-    """Periodically flush orderbooks to DB every 500ms."""
+    """Periodically flush orderbooks + trades to DB every 1s."""
     while True:
         await asyncio.sleep(1)
         try:
-            await asyncio.get_event_loop().run_in_executor(None, _flush_orderbooks_to_db)
+            await asyncio.get_event_loop().run_in_executor(None, _flush_to_db)
         except Exception:
             pass
 
@@ -243,6 +265,21 @@ async def _run_once(token_ids: list[str], changed_event: asyncio.Event) -> None:
                                         _books[tid]["asks"].pop(price, None)
                                     else:
                                         _books[tid]["asks"][price] = size
+
+                elif isinstance(data, dict) and data.get("event_type") == "last_trade_price":
+                    tid = data.get("asset_id")
+                    if tid and tid in _books:
+                        trade = {
+                            "price": data.get("price"),
+                            "size": data.get("size"),
+                            "side": data.get("side"),
+                            "timestamp": data.get("timestamp"),
+                        }
+                        with _trades_lock:
+                            if tid not in _trades:
+                                _trades[tid] = []
+                            _trades[tid].insert(0, trade)
+                            _trades[tid] = _trades[tid][:30]  # keep last 30
         finally:
             ping_task.cancel()
 

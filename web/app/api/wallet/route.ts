@@ -155,28 +155,42 @@ print(json.dumps(get_full_account("${safeKey}")))
 
     // --- Non-cached actions (info, trades, trade execution) ---
 
-    let pyCode = "";
-
     if (action === "info") {
-      pyCode = `
+      // Get wallet info + derive API creds and save to user_config for WS auth
+      const infoPyCode = `
 import json, sys
 sys.path.insert(0, "${CWD}")
-from collector.trading import get_wallet_info
-print(json.dumps(get_wallet_info("${safeKey}")))
+from collector.trading import get_wallet_info, get_api_creds
+info = get_wallet_info("${safeKey}")
+creds = get_api_creds("${safeKey}", "${funder}")
+print(json.dumps({**info, "creds": creds}))
 `;
+      const result = JSON.parse(runPython(infoPyCode));
+      // Save API creds to user_config for collector's user WS channel
+      if (result.creds && !result.creds.error) {
+        try {
+          await query(
+            `INSERT INTO user_config (id, funder, api_key, api_secret, api_passphrase, updated_at)
+             VALUES (1, $1, $2, $3, $4, $5)
+             ON CONFLICT (id) DO UPDATE SET
+               funder = $1, api_key = $2, api_secret = $3, api_passphrase = $4, updated_at = $5`,
+            [result.funder || funder, result.creds.api_key, result.creds.api_secret, result.creds.api_passphrase, Math.floor(Date.now() / 1000)]
+          );
+        } catch {}
+      }
+      const { creds: _, ...info } = result;
+      return NextResponse.json(info);
     } else if (action === "trades") {
-      pyCode = `
+      const tradesPyCode = `
 import json, sys
 sys.path.insert(0, "${CWD}")
 from collector.trading import get_trade_history
 print(json.dumps(get_trade_history("${safeKey}")))
 `;
+      return NextResponse.json(JSON.parse(runPython(tradesPyCode)));
     } else {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
-
-    const result = runPython(pyCode);
-    return NextResponse.json(JSON.parse(result));
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

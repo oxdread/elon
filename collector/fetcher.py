@@ -16,7 +16,7 @@ import threading
 import httpx
 from dotenv import load_dotenv
 
-from collector import clob_feed, twitter_stream
+from collector import clob_feed, twitter_stream, user_feed
 from collector.cache_collector import start_cache_collector
 from collector.db import (
     connect, init_db, upsert_event, upsert_bracket, get_brackets,
@@ -191,9 +191,16 @@ def main():
     # --- Start Twitter stream ---
     twitter_stream.start(on_tweet=lambda t: _handle_tweet(t, conn))
 
-    # --- Start cache collector (trades, comments) ---
+    # --- Start cache collector (comments only) ---
     start_cache_collector(db_url, all_bracket_dicts)
-    print(f"[main] cache collector started for {len(all_bracket_dicts)} brackets")
+    print(f"[main] cache collector started")
+
+    # --- Start user channel WS (trade + order confirmations) ---
+    condition_ids = [b["id"] for b in all_bracket_dicts if b.get("id")]
+    user_feed.set_db_url(db_url)
+    user_feed.set_condition_ids(condition_ids)
+    user_feed.start()
+    print(f"[main] user WS channel started for {len(condition_ids)} markets")
 
     # --- Main polling loop ---
     last_discovery = time.time()

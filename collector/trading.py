@@ -166,6 +166,26 @@ def get_market_info(condition_id: str) -> dict:
         return {"error": str(e)}
 
 
+def get_api_creds(private_key: str, funder: str = "") -> dict:
+    """Derive API credentials (apiKey, secret, passphrase) for WS auth."""
+    try:
+        client = ClobClient(
+            host=CLOB_HOST,
+            chain_id=CHAIN_ID,
+            key=private_key,
+            funder=funder or None,
+            signature_type=1,
+        )
+        creds = client.create_or_derive_api_key()
+        return {
+            "api_key": creds.api_key,
+            "api_secret": creds.api_secret,
+            "api_passphrase": creds.api_passphrase,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def _get_client(private_key: str, funder: str = "") -> ClobClient:
     """Create an authenticated ClobClient v2."""
     client = ClobClient(

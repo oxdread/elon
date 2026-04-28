@@ -131,6 +131,14 @@ export default function TradePage() {
               }
             } catch {}
           }
+          // User channel: trade confirmed → force refresh wallet
+          if (msg.type === "trade_update" && msg.data?.status === "CONFIRMED") {
+            refreshWallet(true);
+          }
+          // User channel: order placed/cancelled → force refresh wallet
+          if (msg.type === "order_update") {
+            refreshWallet(true);
+          }
         } catch {}
       };
 
