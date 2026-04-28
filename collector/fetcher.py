@@ -35,6 +35,23 @@ _running = True
 _db_lock = threading.Lock()
 
 
+def _ws_push(event_type: str, data: dict) -> None:
+    """Push event to the WS relay server (fire and forget)."""
+    import json
+    try:
+        import asyncio
+        import websockets
+
+        async def _send():
+            async with websockets.connect("ws://127.0.0.1:3002", open_timeout=1) as ws:
+                await ws.send(json.dumps({"type": event_type, "data": data}))
+
+        asyncio.get_event_loop().run_until_complete(_send())
+    except Exception:
+        # WS relay might not be running — that's OK
+        pass
+
+
 def _snapshot_prices(conn, brackets, trigger: str = "poll", tweet_id: str = None) -> int:
     ws_prices = clob_feed.latest_prices()
     now = int(time.time())
@@ -72,6 +89,9 @@ def _handle_tweet(tweet: dict, conn) -> None:
     n = _snapshot_prices(conn, brackets, trigger="tweet", tweet_id=tweet["id"])
     count_str = ", ".join(f"{eid[-4:]}={c}" for eid, c in counts.items())
     print(f"[tweet] recorded ({tweet.get('tweet_type', '?')}), {n} snapshots | counts: {count_str}")
+
+    # Push to WS relay instantly
+    _ws_push("tweet", {"id": tweet["id"], "ts": tweet["ts"], "text": tweet["text"]})
 
 
 def _get_all_brackets(conn) -> list[dict]:

@@ -66,59 +66,60 @@ export default function TradePage() {
     return () => clearInterval(id);
   }, []);
 
-  // SSE: instant tweet notifications + price updates
+  // WebSocket: instant tweet notifications
   useEffect(() => {
     if (!mounted) return;
-    let es: EventSource | null = null;
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout>;
 
     const connect = () => {
-      es = new EventSource("/api/sse");
+      const wsUrl = typeof window !== "undefined"
+        ? `ws://${window.location.hostname}:3001`
+        : "ws://localhost:3001";
+      ws = new WebSocket(wsUrl);
 
-      es.addEventListener("tweet", (e) => {
-        const tweet = JSON.parse(e.data);
-        // Add to tweet log instantly
-        setTweetLog((prev) => {
-          if (prev.some((t) => t.id === tweet.id)) return prev;
-          return [tweet, ...prev].slice(0, 50);
-        });
-        // Show toast
-        toast.custom(
-          (t) => (
-            <div className={`${t.visible ? "animate-[slideUp_0.3s_ease-out]" : "opacity-0"} bg-[#141414] border border-[#252525] rounded-xl shadow-2xl px-5 py-4 max-w-sm`}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-6 h-6 rounded-full overflow-hidden shrink-0">
-                  <img src="/elon.jpg" alt="" className="w-full h-full object-cover" />
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === "tweet") {
+            const tweet = msg.data;
+            setTweetLog((prev) => {
+              if (prev.some((t) => t.id === tweet.id)) return prev;
+              return [tweet, ...prev].slice(0, 50);
+            });
+            toast.custom(
+              (t) => (
+                <div className={`${t.visible ? "animate-[slideUp_0.3s_ease-out]" : "opacity-0"} bg-[#141414] border border-[#252525] rounded-xl shadow-2xl px-5 py-4 max-w-sm`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-full overflow-hidden shrink-0">
+                      <img src="/elon.jpg" alt="" className="w-full h-full object-cover" />
+                    </div>
+                    <span className="text-xs font-bold text-[#3b82f6]">New Tweet from @elonmusk</span>
+                  </div>
+                  <p className="text-sm text-[#e5e5e5] leading-relaxed">{tweet.text?.slice(0, 200)}</p>
+                  <div className="text-[10px] text-[#555555] mt-2">just now</div>
                 </div>
-                <span className="text-xs font-bold text-[#3b82f6]">New Tweet from @elonmusk</span>
-              </div>
-              <p className="text-sm text-[#e5e5e5] leading-relaxed">{tweet.text?.slice(0, 200)}</p>
-              <div className="text-[10px] text-[#555555] mt-2">just now</div>
-            </div>
-          ),
-          { duration: 6000, position: "bottom-right" },
-        );
-      });
-
-      es.addEventListener("price_update", () => {
-        // Trigger a brackets refresh on price update
-        fetch("/api/brackets", { cache: "no-store" }).then(r => r.json()).then(d => {
-          if (!d.error) {
-            setEvents(d.events ?? []);
-            setAllBrackets(d.brackets ?? []);
-            setTweetCounts(d.tweet_counts ?? {});
+              ),
+              { duration: 6000, position: "bottom-right" },
+            );
           }
-        }).catch(() => {});
-      });
+        } catch {}
+      };
 
-      es.onerror = () => {
-        es?.close();
-        // Reconnect after 3 seconds
-        setTimeout(connect, 3000);
+      ws.onclose = () => {
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = () => {
+        ws?.close();
       };
     };
 
     connect();
-    return () => { es?.close(); };
+    return () => {
+      clearTimeout(reconnectTimer);
+      ws?.close();
+    };
   }, [mounted]);
 
   useEffect(() => {
