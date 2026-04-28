@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Sidebar from "./components/Sidebar";
 import Header from "./components/Header";
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -20,8 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistMono.variable} h-full antialiased dark`}>
-      <body className="h-full flex bg-[#060606] text-[#e5e5e5] font-mono">
+    <html lang="en" className={`${inter.variable} h-full antialiased dark`}>
+      <body className="h-full flex bg-[#060606] text-[#e5e5e5] font-sans">
         <Sidebar />
         <div className="flex-1 flex flex-col min-w-0">
           <Header />
