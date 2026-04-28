@@ -42,3 +42,13 @@ select option { background: #0d0d0d; }
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+@keyframes obFlashRed {
+  0% { background: rgba(246, 70, 93, 0.25); }
+  100% { background: transparent; }
+}
+
+@keyframes obFlashGreen {
+  0% { background: rgba(14, 203, 129, 0.25); }
+  100% { background: transparent; }
+}

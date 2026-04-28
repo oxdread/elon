@@ -22,6 +22,7 @@ export default function OrderBook({
   // Track previous sizes for flash effect
   const prevSizesRef = useRef<Map<string, string>>(new Map());
   const [flashKeys, setFlashKeys] = useState<Set<string>>(new Set());
+  const flashCounterRef = useRef(0);
 
   useEffect(() => {
     if (initialData) { setBook(initialData); setLoading(false); }
@@ -65,16 +66,14 @@ export default function OrderBook({
       const prev = prevSizesRef.current.get(key);
       if (prev !== undefined && prev !== b.size) newFlash.add(key);
     }
-    // New price levels also flash
-    for (const [key] of currentSizes) {
-      if (!prevSizesRef.current.has(key)) newFlash.add(key);
-    }
 
     prevSizesRef.current = currentSizes;
 
     if (newFlash.size > 0) {
+      flashCounterRef.current++;
       setFlashKeys(newFlash);
-      const timer = setTimeout(() => setFlashKeys(new Set()), 600);
+      // Clear flash after animation completes
+      const timer = setTimeout(() => setFlashKeys(new Set()), 400);
       return () => clearTimeout(timer);
     }
   }, [book]);
@@ -135,12 +134,13 @@ export default function OrderBook({
             const hasOrder = userOrderPrices.get(priceDisplay) === "SELL";
             return (
               <div key={i}
-                className={`flex items-center px-2 py-[2px] relative cursor-pointer hover:bg-[#131313] transition-colors ${isFlashing ? "bg-[#f6465d20]" : ""}`}
+                className="flex items-center px-2 py-[2px] relative cursor-pointer hover:bg-[#131313]"
                 onClick={() => handleClick("buy", a.price, a.size)}>
                 <div className="absolute right-0 top-0 bottom-0 bg-[#f6465d12]" style={{ width: `${pct}%` }} />
+                {isFlashing && <div className="absolute inset-0 animate-[obFlashRed_0.4s_ease-out]" />}
                 {hasOrder && <span className="relative text-[#808080] mr-1 text-[9px]" title="Your order">&#9200;</span>}
                 <span className="relative text-[#f6465d] flex-1 tabular-nums">{priceDisplay}¢</span>
-                <span className={`relative text-[#e5e5e5] tabular-nums ${isFlashing ? "font-bold" : ""}`}>{parseFloat(a.size).toFixed(0)}</span>
+                <span className="relative text-[#e5e5e5] tabular-nums">{parseFloat(a.size).toFixed(0)}</span>
               </div>
             );
           })}
@@ -170,12 +170,13 @@ export default function OrderBook({
           const hasOrder = userOrderPrices.get(priceDisplay) === "BUY";
           return (
             <div key={i}
-              className={`flex items-center px-2 py-[2px] relative cursor-pointer hover:bg-[#131313] transition-colors ${isFlashing ? "bg-[#0ecb8120]" : ""}`}
+              className="flex items-center px-2 py-[2px] relative cursor-pointer hover:bg-[#131313]"
               onClick={() => handleClick("sell", b.price, b.size)}>
               <div className="absolute right-0 top-0 bottom-0 bg-[#0ecb8112]" style={{ width: `${pct}%` }} />
+              {isFlashing && <div className="absolute inset-0 animate-[obFlashGreen_0.4s_ease-out]" />}
               {hasOrder && <span className="relative text-[#808080] mr-1 text-[9px]" title="Your order">&#9200;</span>}
               <span className="relative text-[#0ecb81] flex-1 tabular-nums">{priceDisplay}¢</span>
-              <span className={`relative text-[#e5e5e5] tabular-nums ${isFlashing ? "font-bold" : ""}`}>{parseFloat(b.size).toFixed(0)}</span>
+              <span className="relative text-[#e5e5e5] tabular-nums">{parseFloat(b.size).toFixed(0)}</span>
             </div>
           );
         })}

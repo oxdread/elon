@@ -53,6 +53,7 @@ export default function TradePage() {
   const [openOrders, setOpenOrders] = useState<any[]>([]);
   const [posTab, setPosTab] = useState<"positions" | "orders" | "history">("positions");
   const prevTweetIdRef = useRef<string | null>(null);
+  const tradeBlockUntilRef = useRef(0); // block regular polls from overwriting positions after a trade
 
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -195,6 +196,8 @@ export default function TradePage() {
     const key = typeof window !== "undefined" ? localStorage.getItem("poly_private_key") : null;
     const funder = typeof window !== "undefined" ? localStorage.getItem("poly_funder") : null;
     if (!key || !funder) return;
+    // During trade block window, only force refreshes can update positions
+    const isBlocked = !force && Date.now() < tradeBlockUntilRef.current;
     try {
       const [posRes, ordRes] = await Promise.allSettled([
         fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -202,12 +205,14 @@ export default function TradePage() {
         fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ private_key: key, action: "orders", funder, force }) }).then(r => r.json()),
       ]);
-      if (posRes.status === "fulfilled" && Array.isArray(posRes.value)) setPositionsData(posRes.value);
+      if (!isBlocked && posRes.status === "fulfilled" && Array.isArray(posRes.value)) setPositionsData(posRes.value);
       if (ordRes.status === "fulfilled" && Array.isArray(ordRes.value)) setOpenOrders(ordRes.value);
     } catch {}
   }, []);
 
   const handleTradeComplete = useCallback((trade: { tokenId: string; side: string; size: number; price: number }) => {
+    // Block regular polls from overwriting optimistic data for 8s
+    tradeBlockUntilRef.current = Date.now() + 8000;
     // Optimistic local update — adjust positions immediately
     setPositionsData((prev) => {
       const existing = prev.find((p) => p.asset === trade.tokenId);
@@ -234,9 +239,9 @@ export default function TradePage() {
         return prev;
       }
     });
-    // Background refresh to get accurate data from Polymarket
-    refreshWallet(true);
-    setTimeout(() => refreshWallet(true), 5000);
+    // Delayed force refreshes — give Polymarket time to reflect the trade
+    setTimeout(() => refreshWallet(true), 4000);
+    setTimeout(() => refreshWallet(true), 8000);
   }, [refreshWallet]);
 
   useEffect(() => {
