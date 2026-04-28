@@ -66,6 +66,61 @@ export default function TradePage() {
     return () => clearInterval(id);
   }, []);
 
+  // SSE: instant tweet notifications + price updates
+  useEffect(() => {
+    if (!mounted) return;
+    let es: EventSource | null = null;
+
+    const connect = () => {
+      es = new EventSource("/api/sse");
+
+      es.addEventListener("tweet", (e) => {
+        const tweet = JSON.parse(e.data);
+        // Add to tweet log instantly
+        setTweetLog((prev) => {
+          if (prev.some((t) => t.id === tweet.id)) return prev;
+          return [tweet, ...prev].slice(0, 50);
+        });
+        // Show toast
+        toast.custom(
+          (t) => (
+            <div className={`${t.visible ? "animate-[slideUp_0.3s_ease-out]" : "opacity-0"} bg-[#141414] border border-[#252525] rounded-xl shadow-2xl px-5 py-4 max-w-sm`}>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-6 h-6 rounded-full overflow-hidden shrink-0">
+                  <img src="/elon.jpg" alt="" className="w-full h-full object-cover" />
+                </div>
+                <span className="text-xs font-bold text-[#3b82f6]">New Tweet from @elonmusk</span>
+              </div>
+              <p className="text-sm text-[#e5e5e5] leading-relaxed">{tweet.text?.slice(0, 200)}</p>
+              <div className="text-[10px] text-[#555555] mt-2">just now</div>
+            </div>
+          ),
+          { duration: 6000, position: "bottom-right" },
+        );
+      });
+
+      es.addEventListener("price_update", () => {
+        // Trigger a brackets refresh on price update
+        fetch("/api/brackets", { cache: "no-store" }).then(r => r.json()).then(d => {
+          if (!d.error) {
+            setEvents(d.events ?? []);
+            setAllBrackets(d.brackets ?? []);
+            setTweetCounts(d.tweet_counts ?? {});
+          }
+        }).catch(() => {});
+      });
+
+      es.onerror = () => {
+        es?.close();
+        // Reconnect after 3 seconds
+        setTimeout(connect, 3000);
+      };
+    };
+
+    connect();
+    return () => { es?.close(); };
+  }, [mounted]);
+
   useEffect(() => {
     const tick = async () => {
       try {
@@ -128,26 +183,7 @@ export default function TradePage() {
       if (tradesRes.status === "fulfilled" && Array.isArray(tradesRes.value)) setTradesData(tradesRes.value);
       if (commentsRes.status === "fulfilled" && Array.isArray(commentsRes.value)) setCommentsData(commentsRes.value);
       if (tweetsRes.status === "fulfilled" && tweetsRes.value?.tweets) {
-        const newTweets = tweetsRes.value.tweets;
-        if (newTweets.length > 0 && prevTweetIdRef.current && newTweets[0].id !== prevTweetIdRef.current) {
-          toast.custom(
-            (t) => (
-              <div className={`${t.visible ? "animate-[slideUp_0.3s_ease-out]" : "opacity-0"} bg-[#141414] border border-[#252525] rounded-xl shadow-2xl px-5 py-4 max-w-sm`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-full overflow-hidden shrink-0">
-                    <img src="/elon.jpg" alt="" className="w-full h-full object-cover" />
-                  </div>
-                  <span className="text-xs font-bold text-[#3b82f6]">New Tweet from @elonmusk</span>
-                </div>
-                <p className="text-sm text-[#e5e5e5] leading-relaxed">{newTweets[0].text.slice(0, 200)}{newTweets[0].text.length > 200 ? "..." : ""}</p>
-                <div className="text-[10px] text-[#555555] mt-2">just now</div>
-              </div>
-            ),
-            { duration: 6000, position: "bottom-right" },
-          );
-        }
-        if (newTweets.length > 0) prevTweetIdRef.current = newTweets[0].id;
-        setTweetLog(newTweets);
+        setTweetLog(tweetsRes.value.tweets);
       }
 
       // Fetch positions & orders if wallet is connected
