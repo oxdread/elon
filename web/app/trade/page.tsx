@@ -49,6 +49,8 @@ export default function TradePage() {
   const [positionsData, setPositionsData] = useState<any[]>([]);
   const [openOrders, setOpenOrders] = useState<any[]>([]);
   const [posTab, setPosTab] = useState<"positions" | "orders" | "history">("positions");
+  const [tweetPopup, setTweetPopup] = useState<string | null>(null);
+  const prevTweetIdRef = useRef<string | null>(null);
 
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -125,7 +127,16 @@ export default function TradePage() {
       }
       if (tradesRes.status === "fulfilled" && Array.isArray(tradesRes.value)) setTradesData(tradesRes.value);
       if (commentsRes.status === "fulfilled" && Array.isArray(commentsRes.value)) setCommentsData(commentsRes.value);
-      if (tweetsRes.status === "fulfilled" && tweetsRes.value?.tweets) setTweetLog(tweetsRes.value.tweets);
+      if (tweetsRes.status === "fulfilled" && tweetsRes.value?.tweets) {
+        const newTweets = tweetsRes.value.tweets;
+        if (newTweets.length > 0 && prevTweetIdRef.current && newTweets[0].id !== prevTweetIdRef.current) {
+          // New tweet detected — show popup
+          setTweetPopup(newTweets[0].text);
+          setTimeout(() => setTweetPopup(null), 5000);
+        }
+        if (newTweets.length > 0) prevTweetIdRef.current = newTweets[0].id;
+        setTweetLog(newTweets);
+      }
 
       // Fetch positions & orders if wallet is connected
       const key = typeof window !== "undefined" ? localStorage.getItem("poly_private_key") : null;
@@ -386,7 +397,16 @@ export default function TradePage() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#060606] p-1 gap-1">
+    <div className="flex flex-col h-full bg-[#060606] p-1 gap-1 relative">
+      {/* New tweet popup */}
+      {tweetPopup && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50 animate-pulse">
+          <div className="bg-[#3b82f6] text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 max-w-lg">
+            <span className="text-sm">🐦</span>
+            <span className="text-xs font-medium truncate">New Tweet: {tweetPopup.slice(0, 80)}{tweetPopup.length > 80 ? "..." : ""}</span>
+          </div>
+        </div>
+      )}
       {/* Main grid — no top bar */}
       <div className="flex-1 flex min-h-0 gap-2">
 
@@ -523,22 +543,37 @@ export default function TradePage() {
           <div className="h-52 flex gap-2 shrink-0">
             {/* Elon Tweet */}
             <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden flex flex-col">
-              <div className="px-3 py-1.5 border-b border-[#1a1a1a] shrink-0">
+              <div className="px-3 py-1.5 border-b border-[#1a1a1a] shrink-0 flex items-center gap-2">
                 <span className="text-[10px] text-[#808080] uppercase tracking-wider">Elon Tweets</span>
+                <span className="text-[10px] text-[#3b82f6] font-bold ml-auto">{tweetLog.length}</span>
               </div>
               <div className="flex-1 overflow-y-auto">
                 {tweetLog.length === 0 ? (
                   <div className="p-3 text-[#555555] text-xs">No tweets yet</div>
                 ) : (
-                  tweetLog.map((t, i) => (
-                    <div key={t.id} className="px-3 py-1.5 border-b border-[#131313]/30">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-[9px] text-[#3b82f6] font-bold">#{tweetLog.length - i}</span>
-                        <span className="text-[9px] text-[#555555] tabular-nums">{new Date(t.ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  tweetLog.map((t, i) => {
+                    const age = Math.floor(Date.now() / 1000) - t.ts;
+                    const ageStr = age < 60 ? `${age}s ago` : age < 3600 ? `${Math.floor(age / 60)}m ago` : age < 86400 ? `${Math.floor(age / 3600)}h ago` : `${Math.floor(age / 86400)}d ago`;
+                    return (
+                      <div key={t.id} className="px-3 py-2 border-b border-[#1a1a1a]/40 hover:bg-[#131313] transition-colors">
+                        <div className="flex gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-[#1a1a1a] shrink-0 flex items-center justify-center overflow-hidden">
+                            <img src="https://pbs.twimg.com/profile_images/1845482317292coolkid/JZHHK9Ri_normal.jpg" alt="" className="w-full h-full object-cover"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                            <span className="text-[#555555] text-xs">E</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-xs font-bold text-[#e5e5e5]">Elon Musk</span>
+                              <span className="text-[10px] text-[#555555]">@elonmusk</span>
+                              <span className="text-[10px] text-[#555555] ml-auto">{ageStr}</span>
+                            </div>
+                            <p className="text-xs text-[#b0b0b0] leading-relaxed break-words">{t.text}</p>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-[10px] text-[#808080] leading-snug break-words">{t.text}</p>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>

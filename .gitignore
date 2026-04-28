@@ -10,4 +10,7 @@ web/node_modules/
 web/.next/                                           
 web/out/
 conversation-log.txt                                 
-.claude/    
+.claude/    secret.txt
+conversation-log.txt
+*.txt
+.DS_Store
