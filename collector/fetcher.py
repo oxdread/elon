@@ -38,18 +38,50 @@ _db_lock = threading.Lock()
 def _ws_push(event_type: str, data: dict) -> None:
     """Push event to the WS relay server (fire and forget)."""
     import json
+    import socket
+
     try:
-        import asyncio
-        import websockets
+        # Simple raw WebSocket handshake + send (no asyncio needed)
+        import hashlib, base64, os as _os
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        sock.connect(("127.0.0.1", 3002))
 
-        async def _send():
-            async with websockets.connect("ws://127.0.0.1:3002", open_timeout=1) as ws:
-                await ws.send(json.dumps({"type": event_type, "data": data}))
+        # WebSocket handshake
+        key = base64.b64encode(_os.urandom(16)).decode()
+        handshake = (
+            "GET / HTTP/1.1\r\n"
+            "Host: 127.0.0.1:3002\r\n"
+            "Upgrade: websocket\r\n"
+            "Connection: Upgrade\r\n"
+            f"Sec-WebSocket-Key: {key}\r\n"
+            "Sec-WebSocket-Version: 13\r\n"
+            "\r\n"
+        )
+        sock.sendall(handshake.encode())
+        resp = sock.recv(1024)
+        if b"101" not in resp:
+            sock.close()
+            return
 
-        asyncio.get_event_loop().run_until_complete(_send())
-    except Exception:
-        # WS relay might not be running — that's OK
-        pass
+        # Send WebSocket frame
+        payload = json.dumps({"type": event_type, "data": data}).encode()
+        frame = bytearray()
+        frame.append(0x81)  # text frame, fin
+        mask_key = _os.urandom(4)
+        length = len(payload)
+        if length < 126:
+            frame.append(0x80 | length)  # masked
+        elif length < 65536:
+            frame.append(0x80 | 126)
+            frame.extend(length.to_bytes(2, "big"))
+        frame.extend(mask_key)
+        frame.extend(bytes(b ^ mask_key[i % 4] for i, b in enumerate(payload)))
+        sock.sendall(frame)
+        sock.close()
+        print(f"[ws] pushed {event_type}")
+    except Exception as e:
+        pass  # WS relay might not be running
 
 
 def _snapshot_prices(conn, brackets, trigger: str = "poll", tweet_id: str = None) -> int:

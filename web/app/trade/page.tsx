@@ -461,7 +461,7 @@ export default function TradePage() {
 
   return (
     <div className="flex flex-col h-full bg-[#060606] p-1 gap-1 relative">
-      <Toaster />
+      <Toaster position="bottom-right" toastOptions={{ style: { background: "#141414", color: "#e5e5e5" } }} />
       {/* Main grid — no top bar */}
       <div className="flex-1 flex min-h-0 gap-2">
 
