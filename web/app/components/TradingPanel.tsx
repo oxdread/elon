@@ -8,14 +8,14 @@ type Bracket = {
 };
 
 export default function TradingPanel({
-  bracket, limitPrice, initialAction, initialAmount, onOutcomeChange, onTradeSuccess,
+  bracket, limitPrice, initialAction, initialAmount, onOutcomeChange, onTradeComplete,
 }: {
   bracket: Bracket | null;
   limitPrice?: number | null;
   initialAction?: "buy" | "sell";
   initialAmount?: string;
   onOutcomeChange?: (outcome: "yes" | "no") => void;
-  onTradeSuccess?: (force?: boolean) => void;
+  onTradeComplete?: (trade: { tokenId: string; side: string; size: number; price: number }) => void;
 }) {
   const [action, setAction] = useState<"buy" | "sell">("buy");
   const [outcome, setOutcome] = useState<"yes" | "no">("yes");
@@ -126,9 +126,12 @@ export default function TradingPanel({
       const d = await r.json();
       setResult(d);
       if (d.status === "ok") {
-        onTradeSuccess?.(true);
-        // Polymarket API takes a moment to reflect, refresh again after 3s
-        setTimeout(() => onTradeSuccess?.(true), 3000);
+        onTradeComplete?.({
+          tokenId: bracket.yes_token_id!,
+          side: side,
+          size: shares,
+          price: priceNum / 100,
+        });
       }
       // Auto-dismiss after 3 seconds
       setTimeout(() => setResult(null), 3000);

@@ -207,6 +207,38 @@ export default function TradePage() {
     } catch {}
   }, []);
 
+  const handleTradeComplete = useCallback((trade: { tokenId: string; side: string; size: number; price: number }) => {
+    // Optimistic local update — adjust positions immediately
+    setPositionsData((prev) => {
+      const existing = prev.find((p) => p.asset === trade.tokenId);
+      if (trade.side === "BUY") {
+        if (existing) {
+          const newSize = parseFloat(existing.size || 0) + trade.size;
+          const oldValue = parseFloat(existing.currentValue || 0);
+          return prev.map((p) => p.asset === trade.tokenId
+            ? { ...p, size: String(newSize), currentValue: String(oldValue + trade.size * trade.price) }
+            : p
+          );
+        }
+        return [...prev, { asset: trade.tokenId, size: String(trade.size), curPrice: String(trade.price), currentValue: String(trade.size * trade.price), outcome: "Yes" }];
+      } else {
+        if (existing) {
+          const newSize = Math.max(0, parseFloat(existing.size || 0) - trade.size);
+          if (newSize <= 0) return prev.filter((p) => p.asset !== trade.tokenId);
+          const oldValue = parseFloat(existing.currentValue || 0);
+          return prev.map((p) => p.asset === trade.tokenId
+            ? { ...p, size: String(newSize), currentValue: String(Math.max(0, oldValue - trade.size * trade.price)) }
+            : p
+          );
+        }
+        return prev;
+      }
+    });
+    // Background refresh to get accurate data from Polymarket
+    refreshWallet(true);
+    setTimeout(() => refreshWallet(true), 5000);
+  }, [refreshWallet]);
+
   useEffect(() => {
     if (!activeBracketForPanel) return;
     const tokenId = activeBracketForPanel.yes_token_id;
@@ -644,6 +676,7 @@ export default function TradePage() {
                   label={`${bracket.label} ${tradeOutcome.toUpperCase()}`}
                   initialData={cachedBook ? { bids: cachedBook.bids as any, asks: cachedBook.asks as any } : undefined}
                   outcome={tradeOutcome}
+                  openOrders={openOrders}
                   onClickOrder={(side, price, size) => {
                     setTradeAction(side);
                     setLimitPrice(price);
@@ -661,7 +694,7 @@ export default function TradePage() {
                 initialAction={tradeAction}
                 initialAmount={tradeAmount}
                 onOutcomeChange={setTradeOutcome}
-                onTradeSuccess={refreshWallet}
+                onTradeComplete={handleTradeComplete}
               />
             </div>
           </div>

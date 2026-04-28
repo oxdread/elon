@@ -1,23 +1,27 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 
 type OrderEntry = { price: string; size: string };
 
 export default function OrderBook({
   tokenId, label, initialData, outcome = "yes",
-  onClickOrder,
+  onClickOrder, openOrders,
 }: {
   tokenId: string;
   label: string;
   initialData?: { bids: OrderEntry[]; asks: OrderEntry[] } | null;
   outcome?: "yes" | "no";
   onClickOrder?: (side: "buy" | "sell", price: number, size: number) => void;
+  openOrders?: { price: string; side: string; original_size?: string; size?: string }[];
 }) {
   const [book, setBook] = useState<{ bids: OrderEntry[]; asks: OrderEntry[] } | null>(initialData ?? null);
   const [loading, setLoading] = useState(!initialData);
   const managed = initialData !== undefined;
   const asksEndRef = useRef<HTMLDivElement>(null);
+  // Track previous sizes for flash effect
+  const prevSizesRef = useRef<Map<string, string>>(new Map());
+  const [flashKeys, setFlashKeys] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (initialData) { setBook(initialData); setLoading(false); }
@@ -42,6 +46,50 @@ export default function OrderBook({
     const id = setInterval(fetchBook, 2000);
     return () => { active = false; clearInterval(id); };
   }, [tokenId, managed]);
+
+  // Detect changes and trigger flash
+  useEffect(() => {
+    if (!book) return;
+    const newFlash = new Set<string>();
+    const currentSizes = new Map<string, string>();
+
+    for (const a of book.asks) {
+      const key = `ask-${a.price}`;
+      currentSizes.set(key, a.size);
+      const prev = prevSizesRef.current.get(key);
+      if (prev !== undefined && prev !== a.size) newFlash.add(key);
+    }
+    for (const b of book.bids) {
+      const key = `bid-${b.price}`;
+      currentSizes.set(key, b.size);
+      const prev = prevSizesRef.current.get(key);
+      if (prev !== undefined && prev !== b.size) newFlash.add(key);
+    }
+    // New price levels also flash
+    for (const [key] of currentSizes) {
+      if (!prevSizesRef.current.has(key)) newFlash.add(key);
+    }
+
+    prevSizesRef.current = currentSizes;
+
+    if (newFlash.size > 0) {
+      setFlashKeys(newFlash);
+      const timer = setTimeout(() => setFlashKeys(new Set()), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [book]);
+
+  // Build set of user's open order prices for marking
+  const userOrderPrices = useMemo(() => {
+    const set = new Map<string, string>(); // price -> side
+    if (openOrders) {
+      for (const o of openOrders) {
+        const p = (parseFloat(o.price) * 100).toFixed(1);
+        set.set(p, o.side);
+      }
+    }
+    return set;
+  }, [openOrders]);
 
   // Auto-scroll asks to bottom (near spread) on first load
   useEffect(() => {
@@ -81,13 +129,18 @@ export default function OrderBook({
         <div className="flex flex-col justify-end min-h-full">
           {asks.map((a, i) => {
             const pct = (parseFloat(a.size) / maxSize) * 100;
+            const priceDisplay = (parseFloat(a.price) * 100).toFixed(1);
+            const flashKey = `ask-${a.price}`;
+            const isFlashing = flashKeys.has(flashKey);
+            const hasOrder = userOrderPrices.get(priceDisplay) === "SELL";
             return (
               <div key={i}
-                className="flex items-center px-2 py-[2px] relative cursor-pointer hover:bg-[#131313]"
+                className={`flex items-center px-2 py-[2px] relative cursor-pointer hover:bg-[#131313] transition-colors ${isFlashing ? "bg-[#f6465d20]" : ""}`}
                 onClick={() => handleClick("buy", a.price, a.size)}>
                 <div className="absolute right-0 top-0 bottom-0 bg-[#f6465d12]" style={{ width: `${pct}%` }} />
-                <span className="relative text-[#f6465d] flex-1 tabular-nums">{(parseFloat(a.price) * 100).toFixed(1)}¢</span>
-                <span className="relative text-[#e5e5e5] tabular-nums">{parseFloat(a.size).toFixed(0)}</span>
+                {hasOrder && <span className="relative text-[#808080] mr-1 text-[9px]" title="Your order">&#9200;</span>}
+                <span className="relative text-[#f6465d] flex-1 tabular-nums">{priceDisplay}¢</span>
+                <span className={`relative text-[#e5e5e5] tabular-nums ${isFlashing ? "font-bold" : ""}`}>{parseFloat(a.size).toFixed(0)}</span>
               </div>
             );
           })}
@@ -111,13 +164,18 @@ export default function OrderBook({
       <div className="flex-1 overflow-y-auto min-h-0">
         {bids.map((b, i) => {
           const pct = (parseFloat(b.size) / maxSize) * 100;
+          const priceDisplay = (parseFloat(b.price) * 100).toFixed(1);
+          const flashKey = `bid-${b.price}`;
+          const isFlashing = flashKeys.has(flashKey);
+          const hasOrder = userOrderPrices.get(priceDisplay) === "BUY";
           return (
             <div key={i}
-              className="flex items-center px-2 py-[2px] relative cursor-pointer hover:bg-[#131313]"
+              className={`flex items-center px-2 py-[2px] relative cursor-pointer hover:bg-[#131313] transition-colors ${isFlashing ? "bg-[#0ecb8120]" : ""}`}
               onClick={() => handleClick("sell", b.price, b.size)}>
               <div className="absolute right-0 top-0 bottom-0 bg-[#0ecb8112]" style={{ width: `${pct}%` }} />
-              <span className="relative text-[#0ecb81] flex-1 tabular-nums">{(parseFloat(b.price) * 100).toFixed(1)}¢</span>
-              <span className="relative text-[#e5e5e5] tabular-nums">{parseFloat(b.size).toFixed(0)}</span>
+              {hasOrder && <span className="relative text-[#808080] mr-1 text-[9px]" title="Your order">&#9200;</span>}
+              <span className="relative text-[#0ecb81] flex-1 tabular-nums">{priceDisplay}¢</span>
+              <span className={`relative text-[#e5e5e5] tabular-nums ${isFlashing ? "font-bold" : ""}`}>{parseFloat(b.size).toFixed(0)}</span>
             </div>
           );
         })}
