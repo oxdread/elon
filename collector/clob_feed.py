@@ -1,7 +1,7 @@
 """Multi-token CLOB WebSocket — subscribes to all bracket YES tokens at once.
 
 Maintains a dict of {token_id: {mid, bid, ask, updated_at}} shared state.
-Also flushes full orderbook data to orderbook_cache DB every ~2s.
+Also flushes full orderbook data to orderbook_cache DB every ~500ms.
 Call set_tokens() when brackets are discovered/updated to trigger reconnect.
 """
 from __future__ import annotations
@@ -149,9 +149,9 @@ def _flush_orderbooks_to_db() -> None:
 
 
 async def _db_flusher():
-    """Periodically flush orderbooks to DB every 2 seconds."""
+    """Periodically flush orderbooks to DB every 500ms."""
     while True:
-        await asyncio.sleep(2)
+        await asyncio.sleep(0.5)
         try:
             await asyncio.get_event_loop().run_in_executor(None, _flush_orderbooks_to_db)
         except Exception:
