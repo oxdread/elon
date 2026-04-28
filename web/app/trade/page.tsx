@@ -553,7 +553,7 @@ export default function TradePage() {
                       <div key={t.id} className="px-3 py-2 border-b border-[#1a1a1a]/40 hover:bg-[#131313] transition-colors">
                         <div className="flex gap-2.5">
                           <div className="w-8 h-8 rounded-full bg-[#1a1a1a] shrink-0 overflow-hidden">
-                            <img src="https://pbs.twimg.com/profile_images/1893803697185910784/Na5lOWi5_200x200.jpg" alt="Elon" className="w-full h-full object-cover" />
+                            <img src="/elon.jpg" alt="Elon" className="w-full h-full object-cover" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-0.5">
