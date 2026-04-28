@@ -74,7 +74,7 @@ def get_positions(funder: str) -> list:
             if len(batch) < 200:
                 break
             offset += 200
-        return [p for p in all_positions if float(p.get("currentValue", 0)) > 0]
+        return [p for p in all_positions if float(p.get("size", 0)) > 0]
     except Exception as e:
         return [{"error": str(e)}]
 
