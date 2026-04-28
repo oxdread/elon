@@ -234,37 +234,40 @@ export default function TradePage() {
     const tokenId = activeBracketForPanel.yes_token_id;
     const conditionId = activeBracketForPanel.id;
 
-    const fetchAll = async () => {
-      // Fetch all in parallel — orderbooks bulk, trades, comments, tweets
-      const [allBooksRes, tradesRes, commentsRes, tweetsRes] = await Promise.allSettled([
-        fetch("/api/orderbooks-all", { cache: "no-store" }).then((r) => r.json()),
+    const fetchOrderbooks = async () => {
+      try {
+        const res = await fetch("/api/orderbooks-all", { cache: "no-store" }).then((r) => r.json());
+        if (res && !res.error) setAllOrderbooks(res);
+      } catch {}
+    };
+
+    const fetchRest = async () => {
+      // Fetch trades, comments, tweets in parallel
+      const [tradesRes, commentsRes, tweetsRes] = await Promise.allSettled([
         fetch(`/api/public-trades?condition_id=${conditionId}&limit=30`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
         fetch("/api/comments?limit=30", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
         fetch("/api/tweets?limit=30", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
       ]);
 
-      if (allBooksRes.status === "fulfilled" && allBooksRes.value && !allBooksRes.value.error) {
-        setAllOrderbooks(allBooksRes.value);
-      }
       if (tradesRes.status === "fulfilled" && Array.isArray(tradesRes.value)) setTradesData(tradesRes.value);
       if (commentsRes.status === "fulfilled" && Array.isArray(commentsRes.value)) setCommentsData(commentsRes.value);
       if (tweetsRes.status === "fulfilled" && tweetsRes.value?.tweets) {
         setTweetLog((prev) => {
           const dbTweets = tweetsRes.value.tweets;
-          // Merge: keep WS-pushed tweets that aren't in DB yet
           const dbIds = new Set(dbTweets.map((t: { id: string }) => t.id));
           const wsOnly = prev.filter((t) => !dbIds.has(t.id));
           return [...wsOnly, ...dbTweets].sort((a, b) => b.ts - a.ts).slice(0, 50);
         });
       }
 
-      // Fetch positions & orders if wallet is connected
       await refreshWallet();
     };
 
-    fetchAll();
-    const id = setInterval(fetchAll, 5000);
-    return () => clearInterval(id);
+    fetchOrderbooks();
+    fetchRest();
+    const obId = setInterval(fetchOrderbooks, 1000);
+    const restId = setInterval(fetchRest, 5000);
+    return () => { clearInterval(obId); clearInterval(restId); };
   }, [activeBracketForPanel?.id, activeBracketForPanel?.yes_token_id]);
 
   // Create chart

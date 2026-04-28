@@ -5,8 +5,8 @@ let cache: { data: unknown; ts: number } | null = null;
 
 export async function GET(req: NextRequest) {
   const force = req.nextUrl.searchParams.get("force") === "1";
-  // Cache for 5 seconds unless force
-  if (!force && cache && Date.now() - cache.ts < 5000) {
+  // Cache for 1 second unless force
+  if (!force && cache && Date.now() - cache.ts < 1000) {
     return NextResponse.json(cache.data);
   }
   try {

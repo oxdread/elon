@@ -151,7 +151,7 @@ def _flush_orderbooks_to_db() -> None:
 async def _db_flusher():
     """Periodically flush orderbooks to DB every 500ms."""
     while True:
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1)
         try:
             await asyncio.get_event_loop().run_in_executor(None, _flush_orderbooks_to_db)
         except Exception:
