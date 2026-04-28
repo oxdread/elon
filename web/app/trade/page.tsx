@@ -68,6 +68,10 @@ export default function TradePage() {
     setMounted(true);
     setNow(Math.floor(Date.now() / 1000));
     const id = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
+    // Request notification permission
+    if (typeof Notification !== "undefined" && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
     return () => clearInterval(id);
   }, []);
 
@@ -92,36 +96,14 @@ export default function TradePage() {
               if (prev.some((t) => t.id === tweet.id)) return prev;
               return [tweet, ...prev].slice(0, 50);
             });
-            toast(
-              (t) => (
-                <div
-                  className={`${t.visible ? "" : "opacity-0"} flex items-start gap-3`}
-                  style={{ transition: "opacity 0.3s" }}
-                >
-                  <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
-                    <img src="/elon.jpg" alt="" className="w-full h-full object-cover" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-[#3b82f6] mb-1">New Tweet from @elonmusk</div>
-                    <p className="text-sm text-[#e5e5e5] leading-relaxed">{tweet.text?.slice(0, 200)}</p>
-                    <div className="text-[10px] text-[#555555] mt-1">just now</div>
-                  </div>
-                </div>
-              ),
-              {
-                duration: 6000,
-                position: "bottom-right",
-                style: {
-                  background: "#141414",
-                  border: "1px solid #252525",
-                  borderRadius: "12px",
-                  padding: "16px",
-                  maxWidth: "380px",
-                  boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-                },
-              },
-            );
-            // Play sound AFTER showing toast
+            // Browser notification
+            if (Notification.permission === "granted") {
+              new Notification("New Tweet from @elonmusk", {
+                body: tweet.text?.slice(0, 200),
+                icon: "/elon.jpg",
+              });
+            }
+            // Play sound
             try {
               if (notifyAudioRef.current) {
                 notifyAudioRef.current.currentTime = 0;
