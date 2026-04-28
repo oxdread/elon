@@ -1,6 +1,6 @@
-"""Polymarket CLOB trading API — server-side order execution.
+"""Polymarket CLOB v2 trading API — server-side order execution.
 
-Uses py_clob_client with the user's private key to place/cancel orders.
+Uses py_clob_client_v2 with the user's private key to place/cancel orders.
 The key is passed from the browser per-request (never stored server-side).
 """
 from __future__ import annotations
@@ -9,8 +9,8 @@ import json
 from typing import Optional
 
 import httpx
-from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import (
+from py_clob_client_v2 import ClobClient
+from py_clob_client_v2.clob_types import (
     OrderArgs, OrderType, MarketOrderArgs,
     BalanceAllowanceParams, AssetType,
 )
@@ -26,7 +26,6 @@ def get_wallet_info(private_key: str) -> dict:
         acct = Account.from_key(private_key)
         signing_address = acct.address
 
-        # Try to auto-detect funder/proxy wallet from trade history
         funder = None
         try:
             client = _get_client(private_key)
@@ -36,16 +35,13 @@ def get_wallet_info(private_key: str) -> dict:
         except Exception:
             pass
 
-        return {
-            "address": signing_address,
-            "funder": funder,
-        }
+        return {"address": signing_address, "funder": funder}
     except Exception as e:
         return {"error": str(e)}
 
 
 def get_balance(private_key: str, funder: str = "") -> dict:
-    """Get USDC balance (cash) from CLOB API."""
+    """Get pUSD balance from CLOB v2 API."""
     try:
         client = _get_client(private_key, funder)
         params = BalanceAllowanceParams(
@@ -59,7 +55,7 @@ def get_balance(private_key: str, funder: str = "") -> dict:
 
 
 def get_positions(funder: str) -> list:
-    """Get positions (portfolio) from data-api using funder address."""
+    """Get positions from data-api using funder address. Filters dead ones."""
     try:
         all_positions = []
         offset = 0
@@ -78,24 +74,23 @@ def get_positions(funder: str) -> list:
             if len(batch) < 200:
                 break
             offset += 200
-        # Filter: only return positions with currentValue > 0
         return [p for p in all_positions if float(p.get("currentValue", 0)) > 0]
     except Exception as e:
         return [{"error": str(e)}]
 
 
 def get_open_orders(private_key: str) -> list:
-    """Get open orders from CLOB API."""
+    """Get open orders from CLOB v2 API."""
     try:
         client = _get_client(private_key)
-        orders = client.get_orders()
+        orders = client.get_open_orders()
         return orders if isinstance(orders, list) else []
     except Exception as e:
         return [{"error": str(e)}]
 
 
 def get_trade_history(private_key: str) -> list:
-    """Get trade history from CLOB API."""
+    """Get trade history from CLOB v2 API."""
     try:
         client = _get_client(private_key)
         trades = client.get_trades()
@@ -105,7 +100,7 @@ def get_trade_history(private_key: str) -> list:
 
 
 def get_full_account(private_key: str) -> dict:
-    """Get everything: balance, funder, positions, orders — single call."""
+    """Get everything: balance, funder, positions, orders."""
     try:
         from eth_account import Account
         acct = Account.from_key(private_key)
@@ -122,16 +117,13 @@ def get_full_account(private_key: str) -> dict:
         # Balance
         cash = "0"
         try:
-            params = BalanceAllowanceParams(
-                asset_type=AssetType.COLLATERAL,
-                signature_type=1,
-            )
+            params = BalanceAllowanceParams(asset_type=AssetType.COLLATERAL, signature_type=1)
             bal = client.get_balance_allowance(params)
             cash = bal.get("balance", "0")
         except Exception:
             pass
 
-        # Positions (portfolio)
+        # Positions
         positions = []
         portfolio_value = 0.0
         if funder:
@@ -143,9 +135,13 @@ def get_full_account(private_key: str) -> dict:
                         portfolio_value += float(cv)
 
         # Open orders
-        orders = client.get_orders()
-        if not isinstance(orders, list):
-            orders = []
+        orders = []
+        try:
+            orders = client.get_open_orders()
+            if not isinstance(orders, list):
+                orders = []
+        except Exception:
+            pass
 
         return {
             "address": signing_address,
@@ -160,8 +156,18 @@ def get_full_account(private_key: str) -> dict:
         return {"error": str(e)}
 
 
+def get_market_info(condition_id: str) -> dict:
+    """Get market info including fees, tick size, min order size."""
+    try:
+        client = ClobClient(host=CLOB_HOST, chain_id=CHAIN_ID)
+        info = client.get_clob_market_info(condition_id)
+        return info if isinstance(info, dict) else {"data": info}
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def _get_client(private_key: str, funder: str = "") -> ClobClient:
-    """Create an authenticated ClobClient."""
+    """Create an authenticated ClobClient v2."""
     client = ClobClient(
         host=CLOB_HOST,
         chain_id=CHAIN_ID,
@@ -169,7 +175,7 @@ def _get_client(private_key: str, funder: str = "") -> ClobClient:
         funder=funder or None,
         signature_type=1,
     )
-    creds = client.create_or_derive_api_creds()
+    creds = client.create_or_derive_api_key()
     client.set_api_creds(creds)
     return client
 
@@ -199,7 +205,7 @@ def place_limit_order(private_key: str, token_id: str, price: float, size: float
 def cancel_order(private_key: str, order_id: str) -> dict:
     try:
         client = _get_client(private_key)
-        resp = client.cancel(order_id)
+        resp = client.cancel_order(order_id)
         return {"status": "ok", "response": resp}
     except Exception as e:
         return {"error": str(e)}
