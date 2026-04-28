@@ -486,7 +486,7 @@ export default function TradePage() {
       <div className="flex-1 flex min-h-0 gap-2">
 
         {/* Left column: Market Stat + Bracket (stacked) */}
-        <div className="w-52 flex flex-col shrink-0 gap-2">
+        <div className="w-60 flex flex-col shrink-0 gap-2">
           {/* Market Stat with event chooser */}
           <div className="bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] p-3 shrink-0">
             <select value={selectedEvent || ""} onChange={(e) => { setSelectedEvent(e.target.value); prevSelectedRef.current = "__reset__"; }}
@@ -518,21 +518,26 @@ export default function TradePage() {
               <span className="text-[10px] text-[#808080] uppercase tracking-wider flex-1">Brackets</span>
               <span className="text-[10px] text-[#555555] w-10 text-right">Mid</span>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto p-1.5 flex flex-col gap-1">
               {brackets.map((b) => {
                 const isActive = activeBracket?.id === b.id;
                 const isSelected = selectedBracket === b.id;
-                const tweetsToReach = b.lower_bound > currentTweetCount ? b.lower_bound - currentTweetCount : 0;
                 const isPast = b.upper_bound < currentTweetCount;
                 const midPct = b.mid != null ? b.mid * 100 : 0;
+                // Match positions to this bracket by token ID
+                const yesPos = positionsData.find((p) => p.asset === b.yes_token_id);
+                const noPos = positionsData.find((p) => p.asset === b.no_token_id);
+                const yesShares = yesPos ? parseFloat(yesPos.size || 0) : 0;
+                const noShares = noPos ? parseFloat(noPos.size || 0) : 0;
+                const yesPrice = yesPos ? parseFloat(yesPos.curPrice || 0) : 0;
+                const noPrice = noPos ? parseFloat(noPos.curPrice || 0) : 0;
                 return (
                   <div key={b.id}
-                    className={`flex items-center px-3 py-1 cursor-pointer transition-colors border-b border-[#131313]/40
-                      ${isSelected ? "bg-blue-500/8" : "hover:bg-white/[0.02]"}`}
+                    className={`rounded-lg px-3 py-2 cursor-pointer transition-colors
+                      ${isSelected ? "bg-[#1a1a1a] border border-[#3b82f6]/30" : "bg-[#111111] border border-[#1a1a1a]/50 hover:bg-[#151515]"}`}
                     onClick={async () => {
                       const newSel = isSelected ? null : b.id;
                       setSelectedBracket(newSel);
-                      // If selecting a bracket not in current history, fetch its data
                       if (newSel && !history.some((h) => h.bracket === newSel)) {
                         const from24h = Math.floor(Date.now() / 1000) - 86400;
                         try {
@@ -542,18 +547,33 @@ export default function TradePage() {
                         } catch {}
                       }
                     }}>
-                    <div className="flex-1 min-w-0">
-                      <span className={`text-xs font-bold ${isSelected ? "text-[#3b82f6]" : isActive ? "text-[#3b82f6]" : isPast ? "text-[#222222]" : "text-[#e5e5e5]"}`}>
-                        {b.label}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[13px] font-bold ${isSelected ? "text-[#3b82f6]" : isActive ? "text-[#3b82f6]" : isPast ? "text-[#333333]" : "text-[#e5e5e5]"}`}>
+                          {b.label}
+                        </span>
+                        {isActive && <span className="text-[7px] px-1 py-0.5 rounded-full bg-blue-500/15 text-blue-500/80">ACT</span>}
+                      </div>
+                      <span className={`text-[12px] tabular-nums font-semibold ${
+                        b.mid == null ? "text-[#333333]" : midPct >= 20 ? "text-[#e5e5e5]" : "text-[#808080]"
+                      }`}>
+                        {b.mid != null ? midPct.toFixed(1) + "¢" : "—"}
                       </span>
-                      {isActive && <span className="ml-1 text-[7px] px-1 py-0.5 rounded-full bg-blue-500/15 text-blue-500/80">ACT</span>}
-                      {tweetsToReach > 0 && !isPast && <span className="ml-1 text-[9px] text-[#555555]">+{tweetsToReach}</span>}
                     </div>
-                    <span className={`text-[11px] tabular-nums font-medium w-10 text-right ${
-                      b.mid == null ? "text-[#222222]" : midPct >= 20 ? "text-[#e5e5e5]" : "text-[#808080]"
-                    }`}>
-                      {b.mid != null ? midPct.toFixed(1) : "—"}
-                    </span>
+                    {(yesShares > 0 || noShares > 0) && (
+                      <div className="flex gap-1.5 mt-1.5">
+                        {yesShares > 0 && (
+                          <span className="text-[10px] font-medium text-[#0ecb81] bg-[#0ecb81]/10 border border-[#0ecb81]/20 rounded-full px-2 py-0.5 tabular-nums">
+                            Yes {yesShares >= 1000 ? (yesShares / 1000).toFixed(1) + "k" : Math.round(yesShares).toLocaleString()} · {(yesPrice * 100).toFixed(1)}¢
+                          </span>
+                        )}
+                        {noShares > 0 && (
+                          <span className="text-[10px] font-medium text-[#f6465d] bg-[#f6465d]/10 border border-[#f6465d]/20 rounded-full px-2 py-0.5 tabular-nums">
+                            No {noShares >= 1000 ? (noShares / 1000).toFixed(1) + "k" : Math.round(noShares).toLocaleString()} · {(noPrice * 100).toFixed(1)}¢
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
