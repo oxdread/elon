@@ -191,6 +191,22 @@ export default function TradePage() {
     ? allBrackets.find((b) => b.id === selectedBracket)
     : (selectedEvent ? allBrackets.find((b) => b.event_id === selectedEvent) : null);
 
+  const refreshWallet = useCallback(async () => {
+    const key = typeof window !== "undefined" ? localStorage.getItem("poly_private_key") : null;
+    const funder = typeof window !== "undefined" ? localStorage.getItem("poly_funder") : null;
+    if (!key || !funder) return;
+    try {
+      const [posRes, ordRes] = await Promise.allSettled([
+        fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ private_key: key, action: "positions", funder }) }).then(r => r.json()),
+        fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ private_key: key, action: "orders", funder }) }).then(r => r.json()),
+      ]);
+      if (posRes.status === "fulfilled" && Array.isArray(posRes.value)) setPositionsData(posRes.value);
+      if (ordRes.status === "fulfilled" && Array.isArray(ordRes.value)) setOpenOrders(ordRes.value);
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (!activeBracketForPanel) return;
     const tokenId = activeBracketForPanel.yes_token_id;
@@ -221,20 +237,7 @@ export default function TradePage() {
       }
 
       // Fetch positions & orders if wallet is connected
-      const key = typeof window !== "undefined" ? localStorage.getItem("poly_private_key") : null;
-      const funder = typeof window !== "undefined" ? localStorage.getItem("poly_funder") : null;
-      if (key && funder) {
-        try {
-          const [posRes, ordRes] = await Promise.allSettled([
-            fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ private_key: key, action: "positions", funder }) }).then(r => r.json()),
-            fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ private_key: key, action: "orders", funder }) }).then(r => r.json()),
-          ]);
-          if (posRes.status === "fulfilled" && Array.isArray(posRes.value)) setPositionsData(posRes.value);
-          if (ordRes.status === "fulfilled" && Array.isArray(ordRes.value)) setOpenOrders(ordRes.value);
-        } catch {}
-      }
+      await refreshWallet();
     };
 
     fetchAll();
@@ -658,6 +661,7 @@ export default function TradePage() {
                 initialAction={tradeAction}
                 initialAmount={tradeAmount}
                 onOutcomeChange={setTradeOutcome}
+                onTradeSuccess={refreshWallet}
               />
             </div>
           </div>

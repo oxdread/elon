@@ -8,13 +8,14 @@ type Bracket = {
 };
 
 export default function TradingPanel({
-  bracket, limitPrice, initialAction, initialAmount, onOutcomeChange,
+  bracket, limitPrice, initialAction, initialAmount, onOutcomeChange, onTradeSuccess,
 }: {
   bracket: Bracket | null;
   limitPrice?: number | null;
   initialAction?: "buy" | "sell";
   initialAmount?: string;
   onOutcomeChange?: (outcome: "yes" | "no") => void;
+  onTradeSuccess?: () => void;
 }) {
   const [action, setAction] = useState<"buy" | "sell">("buy");
   const [outcome, setOutcome] = useState<"yes" | "no">("yes");
@@ -117,6 +118,7 @@ export default function TradingPanel({
       });
       const d = await r.json();
       setResult(d);
+      if (d.status === "ok") onTradeSuccess?.();
       // Auto-dismiss after 3 seconds
       setTimeout(() => setResult(null), 3000);
     } catch (e) {
