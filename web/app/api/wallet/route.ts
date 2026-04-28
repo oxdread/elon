@@ -62,12 +62,13 @@ export async function POST(req: NextRequest) {
 
     const safeKey = private_key.replace(/[^a-fA-F0-9x]/g, "");
     const funder = (body.funder || "").replace(/[^a-fA-F0-9x]/g, "");
+    const force = !!body.force;
 
     // --- Cached actions ---
 
     if (action === "positions") {
       if (!funder) return NextResponse.json({ error: "No funder address" }, { status: 400 });
-      const cached = await getCachedWallet(funder);
+      const cached = !force ? await getCachedWallet(funder) : null;
       if (cached && isFresh(cached.updated_at)) {
         return NextResponse.json(cached.positions);
       }
@@ -89,7 +90,7 @@ print(json.dumps(get_positions("${funder}")))
     }
 
     if (action === "balance") {
-      const cached = funder ? await getCachedWallet(funder) : null;
+      const cached = (!force && funder) ? await getCachedWallet(funder) : null;
       if (cached && isFresh(cached.updated_at)) {
         return NextResponse.json({ balance: cached.balance });
       }
@@ -107,7 +108,7 @@ print(json.dumps(get_balance("${safeKey}", "${funder}")))
     }
 
     if (action === "orders") {
-      const cached = funder ? await getCachedWallet(funder) : null;
+      const cached = (!force && funder) ? await getCachedWallet(funder) : null;
       if (cached && isFresh(cached.updated_at)) {
         return NextResponse.json(cached.open_orders);
       }
@@ -125,7 +126,7 @@ print(json.dumps(get_open_orders("${safeKey}")))
     }
 
     if (action === "full") {
-      const cached = funder ? await getCachedWallet(funder) : null;
+      const cached = (!force && funder) ? await getCachedWallet(funder) : null;
       if (cached && isFresh(cached.updated_at)) {
         return NextResponse.json({
           cash: cached.balance,

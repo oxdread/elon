@@ -15,7 +15,7 @@ export default function TradingPanel({
   initialAction?: "buy" | "sell";
   initialAmount?: string;
   onOutcomeChange?: (outcome: "yes" | "no") => void;
-  onTradeSuccess?: () => void;
+  onTradeSuccess?: (force?: boolean) => void;
 }) {
   const [action, setAction] = useState<"buy" | "sell">("buy");
   const [outcome, setOutcome] = useState<"yes" | "no">("yes");
@@ -48,13 +48,20 @@ export default function TradingPanel({
     }
   }, [limitPrice]);
 
-  // Set default price when bracket changes
+  // Set default price when bracket/action changes — use ask for buys, bid for sells
   useEffect(() => {
     if (bracket) {
-      const p = outcome === "yes" ? bracket.ask : (bracket.bid != null ? 1 - bracket.bid : null);
+      let p: number | null = null;
+      if (outcome === "yes") {
+        p = action === "buy" ? bracket.ask : bracket.bid;
+      } else {
+        p = action === "buy"
+          ? (bracket.bid != null ? 1 - bracket.bid : null)
+          : (bracket.ask != null ? 1 - bracket.ask : null);
+      }
       if (p != null) setPrice((p * 100).toFixed(1));
     }
-  }, [bracket?.id, outcome]);
+  }, [bracket?.id, outcome, action]);
 
   const hasKey = typeof window !== "undefined" && !!localStorage.getItem("poly_private_key");
 
@@ -118,7 +125,11 @@ export default function TradingPanel({
       });
       const d = await r.json();
       setResult(d);
-      if (d.status === "ok") onTradeSuccess?.();
+      if (d.status === "ok") {
+        onTradeSuccess?.(true);
+        // Polymarket API takes a moment to reflect, refresh again after 3s
+        setTimeout(() => onTradeSuccess?.(true), 3000);
+      }
       // Auto-dismiss after 3 seconds
       setTimeout(() => setResult(null), 3000);
     } catch (e) {
