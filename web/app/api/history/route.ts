@@ -3,7 +3,7 @@ import { query } from "@/lib/db";
 
 // In-memory cache to avoid re-fetching the same event data
 const cache = new Map<string, { data: unknown; ts: number }>();
-const CACHE_TTL = 60000; // 1 minute
+const CACHE_TTL = 120000; // 2 minutes (longer cache for faster loads)
 
 export async function GET(req: NextRequest) {
   try {

@@ -10,6 +10,7 @@ import { shortSlug, eventDurationDays } from "../components/EventTabs";
 import OrderBook from "../components/OrderBook";
 import TradeHistory from "../components/TradeHistory";
 import TradingPanel from "../components/TradingPanel";
+import { ChartShimmer, OrderbookShimmer, PanelShimmer } from "../components/Shimmer";
 import Comments from "../components/Comments";
 
 type Event = { id: string; slug: string; title: string; start_date: string; end_date: string };
@@ -34,6 +35,7 @@ export default function TradePage() {
   const [selectedBracket, setSelectedBracket] = useState<string | null>(null);
   const [bottomTab, setBottomTab] = useState<"book" | "trades" | "comments">("book");
   const [history, setHistory] = useState<HistorySeries[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState(0);
   const [limitPrice, setLimitPrice] = useState<number | null>(null);
@@ -166,13 +168,14 @@ export default function TradePage() {
 
   const fetchHistory = useCallback(async () => {
     if (!selectedEvent) return;
+    setHistoryLoading(true);
     try {
-      // Default: last 24h only (fast). User can click "All" for full history.
       const from24h = Math.floor(Date.now() / 1000) - 86400;
       const r = await fetch(`/api/history?event_id=${selectedEvent}&from=${from24h}`, { cache: "no-store" });
       const d = await r.json();
       if (!d.error) setHistory(d.series ?? []);
     } catch {}
+    setHistoryLoading(false);
   }, [selectedEvent]);
 
   // Fetch history once on event change, then refresh every 5 min (not every 60s)
@@ -551,7 +554,8 @@ export default function TradePage() {
           <div className="flex-1 flex min-h-0 gap-2">
             {/* Graph */}
             <div className="flex-1 min-w-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden relative">
-              <div ref={chartContainerRef} className="w-full h-full" />
+              {historyLoading && history.length === 0 && <ChartShimmer />}
+              <div ref={chartContainerRef} className={`w-full h-full ${historyLoading && history.length === 0 ? "hidden" : ""}`} />
               <div className="absolute top-2 right-2 z-10 flex gap-1">
                 {[
                   { label: "1D", seconds: 86400 },
@@ -594,10 +598,11 @@ export default function TradePage() {
             <div className="w-44 shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden">
               {(() => {
                 const bracket = selectedBracketData ?? brackets[0];
-                if (!bracket) return <div className="flex items-center justify-center h-full text-[#555555] text-xs">Select bracket</div>;
+                if (!bracket) return <OrderbookShimmer />;
                 const tokenId = tradeOutcome === "yes" ? bracket.yes_token_id : bracket.no_token_id;
-                if (!tokenId) return <div className="flex items-center justify-center h-full text-[#555555] text-xs">No token</div>;
+                if (!tokenId) return <OrderbookShimmer />;
                 const cachedBook = allOrderbooks[bracket.id];
+                if (!cachedBook && Object.keys(allOrderbooks).length === 0) return <OrderbookShimmer />;
                 return <OrderBook
                   tokenId={tokenId}
                   label={`${bracket.label} ${tradeOutcome.toUpperCase()}`}
@@ -634,7 +639,7 @@ export default function TradePage() {
               </div>
               <div className="flex-1 overflow-y-auto">
                 {tweetLog.length === 0 ? (
-                  <div className="p-3 text-[#555555] text-xs">No tweets yet</div>
+                  <PanelShimmer rows={4} />
                 ) : (
                   tweetLog.map((t, i) => {
                     const age = Math.floor(Date.now() / 1000) - t.ts;
