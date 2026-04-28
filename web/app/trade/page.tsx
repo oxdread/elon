@@ -130,12 +130,21 @@ export default function TradePage() {
       if (tweetsRes.status === "fulfilled" && tweetsRes.value?.tweets) {
         const newTweets = tweetsRes.value.tweets;
         if (newTweets.length > 0 && prevTweetIdRef.current && newTweets[0].id !== prevTweetIdRef.current) {
-          toast(newTweets[0].text.slice(0, 120), {
-            duration: 5000,
-            position: "bottom-right",
-            icon: "𝕏",
-            style: { background: "#141414", color: "#e5e5e5", border: "1px solid #252525", fontSize: "12px", maxWidth: "360px" },
-          });
+          toast.custom(
+            (t) => (
+              <div className={`${t.visible ? "animate-[slideUp_0.3s_ease-out]" : "opacity-0"} bg-[#141414] border border-[#252525] rounded-xl shadow-2xl px-5 py-4 max-w-sm`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-full overflow-hidden shrink-0">
+                    <img src="/elon.jpg" alt="" className="w-full h-full object-cover" />
+                  </div>
+                  <span className="text-xs font-bold text-[#3b82f6]">New Tweet from @elonmusk</span>
+                </div>
+                <p className="text-sm text-[#e5e5e5] leading-relaxed">{newTweets[0].text.slice(0, 200)}{newTweets[0].text.length > 200 ? "..." : ""}</p>
+                <div className="text-[10px] text-[#555555] mt-2">just now</div>
+              </div>
+            ),
+            { duration: 6000, position: "bottom-right" },
+          );
         }
         if (newTweets.length > 0) prevTweetIdRef.current = newTweets[0].id;
         setTweetLog(newTweets);
@@ -159,7 +168,7 @@ export default function TradePage() {
     };
 
     fetchAll();
-    const id = setInterval(fetchAll, 10000);
+    const id = setInterval(fetchAll, 5000);
     return () => clearInterval(id);
   }, [activeBracketForPanel?.id, activeBracketForPanel?.yes_token_id]);
 
