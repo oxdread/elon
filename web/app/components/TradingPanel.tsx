@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import toast from "react-hot-toast";
 
 type Bracket = {
   id: string; label: string; yes_token_id: string | null;
@@ -24,8 +25,6 @@ export default function TradingPanel({
   const [amount, setAmount] = useState("");
   const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loadingMsg, setLoadingMsg] = useState("");
-  const [result, setResult] = useState<{ status?: string; error?: string } | null>(null);
 
   // Sync from orderbook click
   useEffect(() => {
@@ -103,8 +102,8 @@ export default function TradingPanel({
     const key = localStorage.getItem("poly_private_key")!;
     const funder = localStorage.getItem("poly_funder") || "";
     setLoading(true);
-    setLoadingMsg("Placing order...");
-    setResult(null);
+    const toastStyle = { background: "#141414", color: "#e5e5e5", border: "1px solid #252525", borderRadius: "12px" };
+    const toastId = toast.loading("Placing order...", { position: "bottom-right", style: toastStyle });
     try {
       const side = action === "buy" ? "BUY" : "SELL";
       const body: Record<string, string | number> = {
@@ -127,19 +126,16 @@ export default function TradingPanel({
       });
       const d = await r.json();
       if (d.status === "ok") {
-        setLoadingMsg("Order placed! Updating data...");
+        toast.loading("Order placed! Updating...", { id: toastId, style: { ...toastStyle, color: "#0ecb81" } });
         try { await onTradeComplete?.(); } catch {}
-        setResult({ status: "ok" });
+        toast.success("Done", { id: toastId, duration: 2000, style: { ...toastStyle, color: "#0ecb81" } });
       } else {
-        setResult(d);
+        toast.error(d.error || "Order failed", { id: toastId, duration: 4000, style: { ...toastStyle, color: "#f6465d" } });
       }
-      setTimeout(() => setResult(null), 3000);
     } catch (e) {
-      setResult({ error: String(e) });
-      setTimeout(() => setResult(null), 5000);
+      toast.error(String(e), { id: toastId, duration: 4000, style: { ...toastStyle, color: "#f6465d" } });
     }
     setLoading(false);
-    setLoadingMsg("");
   };
 
   if (!bracket) {
@@ -271,20 +267,9 @@ export default function TradingPanel({
             disabled={!hasKey || loading || total <= 0}
             className="w-full py-3 rounded-lg font-bold text-sm bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            {loading ? loadingMsg || "Processing..." :
-              !hasKey ? "Import key in Settings" :
-              `Place ${action} order`}
+            {!hasKey ? "Import key in Settings" : `Place ${action} order`}
           </button>
         </div>
-
-        {/* Result */}
-        {result && (
-          <div className={`mx-3 mb-3 text-[10px] p-2.5 rounded-lg border ${
-            result.error ? "border-rose-800/40 bg-rose-950/30 text-[#f6465d]" : "border-emerald-800/40 bg-emerald-950/30 text-[#0ecb81]"
-          }`}>
-            {result.error ? `Error: ${result.error}` : "Order placed successfully"}
-          </div>
-        )}
       </div>
     </div>
   );
