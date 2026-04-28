@@ -59,6 +59,22 @@ export default function TradePage() {
   const prevEventRef = useRef<string | null>(null);
   const isUserScaled = useRef(false);
 
+  // Pre-load notification sound — needs user interaction first
+  const notifyAudioRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    const audio = new Audio("/notify.wav");
+    audio.volume = 0.5;
+    audio.load();
+    notifyAudioRef.current = audio;
+    // Unlock audio on first click
+    const unlock = () => {
+      audio.play().then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
+      document.removeEventListener("click", unlock);
+    };
+    document.addEventListener("click", unlock);
+    return () => document.removeEventListener("click", unlock);
+  }, []);
+
   useEffect(() => {
     setMounted(true);
     setNow(Math.floor(Date.now() / 1000));
@@ -118,9 +134,10 @@ export default function TradePage() {
             );
             // Play sound AFTER showing toast
             try {
-              const audio = new Audio("/notify.wav");
-              audio.volume = 0.5;
-              audio.play().catch(() => {});
+              if (notifyAudioRef.current) {
+                notifyAudioRef.current.currentTime = 0;
+                notifyAudioRef.current.play().catch(() => {});
+              }
             } catch {}
           }
         } catch {}
@@ -204,7 +221,13 @@ export default function TradePage() {
       if (tradesRes.status === "fulfilled" && Array.isArray(tradesRes.value)) setTradesData(tradesRes.value);
       if (commentsRes.status === "fulfilled" && Array.isArray(commentsRes.value)) setCommentsData(commentsRes.value);
       if (tweetsRes.status === "fulfilled" && tweetsRes.value?.tweets) {
-        setTweetLog(tweetsRes.value.tweets);
+        setTweetLog((prev) => {
+          const dbTweets = tweetsRes.value.tweets;
+          // Merge: keep WS-pushed tweets that aren't in DB yet
+          const dbIds = new Set(dbTweets.map((t: { id: string }) => t.id));
+          const wsOnly = prev.filter((t) => !dbIds.has(t.id));
+          return [...wsOnly, ...dbTweets].sort((a, b) => b.ts - a.ts).slice(0, 50);
+        });
       }
 
       // Fetch positions & orders if wallet is connected
