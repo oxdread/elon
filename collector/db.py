@@ -34,6 +34,7 @@ def init_db(conn) -> None:
             CREATE TABLE IF NOT EXISTS user_config (
                 id INT PRIMARY KEY DEFAULT 1,
                 funder TEXT,
+                private_key TEXT,
                 api_key TEXT,
                 api_secret TEXT,
                 api_passphrase TEXT,

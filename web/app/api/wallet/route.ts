@@ -170,11 +170,11 @@ print(json.dumps({**info, "creds": creds}))
       if (result.creds && !result.creds.error) {
         try {
           await query(
-            `INSERT INTO user_config (id, funder, api_key, api_secret, api_passphrase, updated_at)
-             VALUES (1, $1, $2, $3, $4, $5)
+            `INSERT INTO user_config (id, funder, private_key, api_key, api_secret, api_passphrase, updated_at)
+             VALUES (1, $1, $2, $3, $4, $5, $6)
              ON CONFLICT (id) DO UPDATE SET
-               funder = $1, api_key = $2, api_secret = $3, api_passphrase = $4, updated_at = $5`,
-            [result.funder || funder, result.creds.api_key, result.creds.api_secret, result.creds.api_passphrase, Math.floor(Date.now() / 1000)]
+               funder = $1, private_key = $2, api_key = $3, api_secret = $4, api_passphrase = $5, updated_at = $6`,
+            [result.funder || funder, safeKey, result.creds.api_key, result.creds.api_secret, result.creds.api_passphrase, Math.floor(Date.now() / 1000)]
           );
         } catch {}
       }
