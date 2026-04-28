@@ -229,7 +229,7 @@ export default function TradePage() {
             fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ private_key: key, action: "positions", funder }) }).then(r => r.json()),
             fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ private_key: key, action: "orders" }) }).then(r => r.json()),
+              body: JSON.stringify({ private_key: key, action: "orders", funder }) }).then(r => r.json()),
           ]);
           if (posRes.status === "fulfilled" && Array.isArray(posRes.value)) setPositionsData(posRes.value);
           if (ordRes.status === "fulfilled" && Array.isArray(ordRes.value)) setOpenOrders(ordRes.value);

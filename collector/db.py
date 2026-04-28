@@ -17,9 +17,20 @@ def connect():
     return conn
 
 
-def init_db() -> None:
-    """Schema is managed via Supabase dashboard / migration. This is a no-op."""
-    pass
+def init_db(conn) -> None:
+    """Create tables that may not exist yet."""
+    with conn.cursor() as cur:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS wallet_cache (
+                funder TEXT PRIMARY KEY,
+                balance TEXT DEFAULT '0',
+                portfolio_value NUMERIC DEFAULT 0,
+                positions JSONB DEFAULT '[]',
+                open_orders JSONB DEFAULT '[]',
+                updated_at INT DEFAULT 0
+            )
+        """)
+    conn.commit()
 
 
 # ---------------------------------------------------------------------------

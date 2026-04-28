@@ -1,9 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
 import { execSync } from "child_process";
 import path from "path";
+import { query } from "@/lib/db";
 
 const PYTHON = path.join(process.cwd(), "..", ".venv", "bin", "python3");
 const CWD = path.join(process.cwd(), "..");
+const CACHE_TTL = 10; // seconds
+
+function runPython(pyCode: string): string {
+  return execSync(`${PYTHON} -c '${pyCode.replace(/'/g, "'\\''")}'`, {
+    timeout: 30000, encoding: "utf-8", cwd: CWD,
+  }).trim();
+}
+
+async function getCachedWallet(funder: string): Promise<{ balance: string; portfolio_value: number; positions: unknown[]; open_orders: unknown[]; updated_at: number } | null> {
+  try {
+    const { rows } = await query(
+      "SELECT balance, portfolio_value, positions, open_orders, updated_at FROM wallet_cache WHERE funder = $1",
+      [funder]
+    );
+    if (rows.length === 0) return null;
+    return rows[0] as { balance: string; portfolio_value: number; positions: unknown[]; open_orders: unknown[]; updated_at: number };
+  } catch {
+    return null;
+  }
+}
+
+async function upsertWalletCache(funder: string, data: { balance?: string; portfolio_value?: number; positions?: unknown[]; open_orders?: unknown[] }) {
+  const now = Math.floor(Date.now() / 1000);
+  try {
+    await query(
+      `INSERT INTO wallet_cache (funder, balance, portfolio_value, positions, open_orders, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (funder) DO UPDATE SET
+         balance = COALESCE($2, wallet_cache.balance),
+         portfolio_value = COALESCE($3, wallet_cache.portfolio_value),
+         positions = COALESCE($4, wallet_cache.positions),
+         open_orders = COALESCE($5, wallet_cache.open_orders),
+         updated_at = $6`,
+      [
+        funder,
+        data.balance ?? "0",
+        data.portfolio_value ?? 0,
+        JSON.stringify(data.positions ?? []),
+        JSON.stringify(data.open_orders ?? []),
+        now,
+      ]
+    );
+  } catch {}
+}
+
+function isFresh(updatedAt: number): boolean {
+  return Math.floor(Date.now() / 1000) - updatedAt < CACHE_TTL;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,8 +60,99 @@ export async function POST(req: NextRequest) {
     const { private_key, action } = body;
     if (!private_key) return NextResponse.json({ error: "No key" }, { status: 400 });
 
-    // Escape key for shell safety
     const safeKey = private_key.replace(/[^a-fA-F0-9x]/g, "");
+    const funder = (body.funder || "").replace(/[^a-fA-F0-9x]/g, "");
+
+    // --- Cached actions ---
+
+    if (action === "positions") {
+      if (!funder) return NextResponse.json({ error: "No funder address" }, { status: 400 });
+      const cached = await getCachedWallet(funder);
+      if (cached && isFresh(cached.updated_at)) {
+        return NextResponse.json(cached.positions);
+      }
+      // Fetch fresh
+      const pyCode = `
+import json, sys
+sys.path.insert(0, "${CWD}")
+from collector.trading import get_positions
+print(json.dumps(get_positions("${funder}")))
+`;
+      const result = JSON.parse(runPython(pyCode));
+      // Compute portfolio value
+      let pv = 0;
+      if (Array.isArray(result)) {
+        for (const p of result) pv += parseFloat(p.currentValue || 0);
+      }
+      await upsertWalletCache(funder, { positions: result, portfolio_value: pv });
+      return NextResponse.json(result);
+    }
+
+    if (action === "balance") {
+      const cached = funder ? await getCachedWallet(funder) : null;
+      if (cached && isFresh(cached.updated_at)) {
+        return NextResponse.json({ balance: cached.balance });
+      }
+      const pyCode = `
+import json, sys
+sys.path.insert(0, "${CWD}")
+from collector.trading import get_balance
+print(json.dumps(get_balance("${safeKey}", "${funder}")))
+`;
+      const result = JSON.parse(runPython(pyCode));
+      if (funder && result.balance) {
+        await upsertWalletCache(funder, { balance: result.balance });
+      }
+      return NextResponse.json(result);
+    }
+
+    if (action === "orders") {
+      const cached = funder ? await getCachedWallet(funder) : null;
+      if (cached && isFresh(cached.updated_at)) {
+        return NextResponse.json(cached.open_orders);
+      }
+      const pyCode = `
+import json, sys
+sys.path.insert(0, "${CWD}")
+from collector.trading import get_open_orders
+print(json.dumps(get_open_orders("${safeKey}")))
+`;
+      const result = JSON.parse(runPython(pyCode));
+      if (funder) {
+        await upsertWalletCache(funder, { open_orders: result });
+      }
+      return NextResponse.json(result);
+    }
+
+    if (action === "full") {
+      const cached = funder ? await getCachedWallet(funder) : null;
+      if (cached && isFresh(cached.updated_at)) {
+        return NextResponse.json({
+          cash: cached.balance,
+          portfolio_value: cached.portfolio_value,
+          positions: cached.positions,
+          open_orders: cached.open_orders,
+        });
+      }
+      const pyCode = `
+import json, sys
+sys.path.insert(0, "${CWD}")
+from collector.trading import get_full_account
+print(json.dumps(get_full_account("${safeKey}")))
+`;
+      const result = JSON.parse(runPython(pyCode));
+      if (result.funder || funder) {
+        await upsertWalletCache(result.funder || funder, {
+          balance: result.cash,
+          portfolio_value: result.portfolio_value,
+          positions: result.positions,
+          open_orders: result.open_orders,
+        });
+      }
+      return NextResponse.json(result);
+    }
+
+    // --- Non-cached actions (info, trades, trade execution) ---
 
     let pyCode = "";
 
@@ -22,37 +162,6 @@ import json, sys
 sys.path.insert(0, "${CWD}")
 from collector.trading import get_wallet_info
 print(json.dumps(get_wallet_info("${safeKey}")))
-`;
-    } else if (action === "balance") {
-      const funder = (body.funder || "").replace(/[^a-fA-F0-9x]/g, "");
-      pyCode = `
-import json, sys
-sys.path.insert(0, "${CWD}")
-from collector.trading import get_balance
-print(json.dumps(get_balance("${safeKey}", "${funder}")))
-`;
-    } else if (action === "full") {
-      pyCode = `
-import json, sys
-sys.path.insert(0, "${CWD}")
-from collector.trading import get_full_account
-print(json.dumps(get_full_account("${safeKey}")))
-`;
-    } else if (action === "positions") {
-      const funder = (body.funder || "").replace(/[^a-fA-F0-9x]/g, "");
-      if (!funder) return NextResponse.json({ error: "No funder address" }, { status: 400 });
-      pyCode = `
-import json, sys
-sys.path.insert(0, "${CWD}")
-from collector.trading import get_positions
-print(json.dumps(get_positions("${funder}")))
-`;
-    } else if (action === "orders") {
-      pyCode = `
-import json, sys
-sys.path.insert(0, "${CWD}")
-from collector.trading import get_open_orders
-print(json.dumps(get_open_orders("${safeKey}")))
 `;
     } else if (action === "trades") {
       pyCode = `
@@ -65,11 +174,8 @@ print(json.dumps(get_trade_history("${safeKey}")))
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }
 
-    const result = execSync(`${PYTHON} -c '${pyCode.replace(/'/g, "'\\''")}'`, {
-      timeout: 30000, encoding: "utf-8", cwd: CWD,
-    });
-
-    return NextResponse.json(JSON.parse(result.trim()));
+    const result = runPython(pyCode);
+    return NextResponse.json(JSON.parse(result));
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
