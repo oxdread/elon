@@ -3,7 +3,7 @@ import { query } from "@/lib/db";
 
 // In-memory cache to avoid re-fetching the same event data
 const cache = new Map<string, { data: unknown; ts: number }>();
-const CACHE_TTL = 120000; // 2 minutes (longer cache for faster loads)
+const CACHE_TTL = 30000; // 30 seconds
 
 export async function GET(req: NextRequest) {
   try {
@@ -74,13 +74,19 @@ export async function GET(req: NextRequest) {
         }
       }
     } else if (bracketId) {
+      const params: unknown[] = [bracketId];
+      let whereFrom = "";
+      if (from) {
+        params.push(parseInt(from));
+        whereFrom = ` AND ps.ts >= $2`;
+      }
       const { rows: data } = await query(
         `SELECT ps.bracket_id, b.label, ps.ts, ps.mid, ps.trigger
          FROM price_snapshots ps
          JOIN brackets b ON b.id = ps.bracket_id
-         WHERE ps.bracket_id = $1
+         WHERE ps.bracket_id = $1${whereFrom}
          ORDER BY ps.ts ASC`,
-        [bracketId]
+        params
       );
       rows = data as Row[];
     } else {
