@@ -5,7 +5,7 @@ import { query } from "@/lib/db";
 
 const PYTHON = path.join(process.cwd(), "..", ".venv", "bin", "python3");
 const CWD = path.join(process.cwd(), "..");
-const CACHE_TTL = 5; // seconds
+const CACHE_TTL = 2; // seconds
 
 function runPython(pyCode: string): string {
   return execSync(`${PYTHON} -c '${pyCode.replace(/'/g, "'\\''")}'`, {

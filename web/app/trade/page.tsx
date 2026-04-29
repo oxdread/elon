@@ -171,7 +171,7 @@ export default function TradePage() {
       } catch {}
     };
     tick();
-    const id = setInterval(tick, 5000);
+    const id = setInterval(tick, 2000);
     return () => clearInterval(id);
   }, [selectedEvent]);
 
@@ -250,8 +250,8 @@ export default function TradePage() {
 
     fetchOrderbooks();
     fetchRest();
-    const obId = setInterval(fetchOrderbooks, 3000);
-    const restId = setInterval(fetchRest, 5000);
+    const obId = setInterval(fetchOrderbooks, 1000);
+    const restId = setInterval(fetchRest, 2000);
     return () => { clearInterval(obId); clearInterval(restId); };
   }, [activeBracketForPanel?.id, activeBracketForPanel?.yes_token_id]);
 
