@@ -358,7 +358,43 @@ export default function TradePage() {
 
       if (rawPoints.length === 0) continue;
 
-      const points = rawPoints.map((p) => ({
+      // Monotone cubic interpolation (Fritsch-Carlson) — smooth without overshoot
+      const interpolated: { time: number; value: number }[] = [];
+      const n = rawPoints.length;
+      if (n < 2) {
+        interpolated.push(...rawPoints);
+      } else {
+        const dx: number[] = [], dy: number[] = [], m: number[] = [];
+        for (let i = 0; i < n - 1; i++) {
+          dx.push(rawPoints[i + 1].time - rawPoints[i].time);
+          dy.push(rawPoints[i + 1].value - rawPoints[i].value);
+          m.push(dy[i] / dx[i]);
+        }
+        const tg: number[] = [m[0]];
+        for (let i = 1; i < n - 1; i++) {
+          tg.push(m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2);
+        }
+        tg.push(m[n - 2]);
+        for (let i = 0; i < n - 1; i++) {
+          if (Math.abs(m[i]) < 1e-10) { tg[i] = 0; tg[i + 1] = 0; }
+          else {
+            const a = tg[i] / m[i], b = tg[i + 1] / m[i];
+            if (a * a + b * b > 9) { const s = 3 / Math.sqrt(a * a + b * b); tg[i] = s * a * m[i]; tg[i + 1] = s * b * m[i]; }
+          }
+        }
+        for (let i = 0; i < n - 1; i++) {
+          interpolated.push(rawPoints[i]);
+          const h = dx[i];
+          for (let s = 1; s <= 4; s++) {
+            const t = s / 5, t2 = t * t, t3 = t2 * t;
+            const v = (2*t3-3*t2+1)*rawPoints[i].value + (t3-2*t2+t)*h*tg[i] + (-2*t3+3*t2)*rawPoints[i+1].value + (t3-t2)*h*tg[i+1];
+            interpolated.push({ time: Math.round(rawPoints[i].time + h * t), value: v });
+          }
+        }
+        interpolated.push(rawPoints[n - 1]);
+      }
+
+      const points = interpolated.map((p) => ({
         time: p.time as unknown as import("lightweight-charts").UTCTimestamp,
         value: p.value,
       }));
@@ -385,7 +421,7 @@ export default function TradePage() {
         topColor: "rgba(59, 130, 246, 0.08)",
         bottomColor: "rgba(59, 130, 246, 0.0)",
         lineWidth: 2,
-        lineType: LineType.Curved,
+        lineType: LineType.Simple,
         crosshairMarkerVisible: true,
         crosshairMarkerRadius: 5,
         crosshairMarkerBorderColor: "#3b82f6",
