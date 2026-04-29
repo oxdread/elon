@@ -70,7 +70,10 @@ export default function Header() {
 
     fetchWallet();
     const id = setInterval(fetchWallet, 15000);
-    return () => clearInterval(id);
+    // Listen for trade events to refresh immediately
+    const onTrade = () => fetchWallet();
+    window.addEventListener("trade-executed", onTrade);
+    return () => { clearInterval(id); window.removeEventListener("trade-executed", onTrade); };
   }, []);
 
   const statusAge = mounted && status?.last_poll_ts ? now - status.last_poll_ts : null;

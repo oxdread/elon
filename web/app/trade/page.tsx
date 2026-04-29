@@ -651,8 +651,10 @@ export default function TradePage() {
                 initialAmount={tradeAmount}
                 onOutcomeChange={setTradeOutcome}
                 onOrderFilled={(trade) => {
-                  // Freeze this token from poll overwrites for 15s
+                  // Freeze this token from poll overwrites for 10s
                   frozenTokensRef.current.set(trade.tokenId, Date.now() + 10000);
+                  // Tell Header to refresh cash/portfolio
+                  window.dispatchEvent(new Event("trade-executed"));
                   setPositionsData((prev) => {
                     const existing = prev.find((p: any) => p.asset === trade.tokenId);
                     if (trade.side === "BUY") {
