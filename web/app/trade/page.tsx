@@ -176,25 +176,23 @@ export default function TradePage() {
     return () => clearInterval(id);
   }, [selectedEvent]);
 
-  const fetchHistory = useCallback(async (bracketId?: string, fromTs?: number) => {
-    const bid = bracketId || selectedBracket;
-    if (!bid) return;
+  // Load ALL bracket history once when event changes
+  const fetchAllHistory = useCallback(async () => {
+    if (!selectedEvent) return;
     setHistoryLoading(true);
     try {
-      const params = `bracket_id=${bid}${fromTs ? `&from=${fromTs}` : ""}`;
-      const r = await fetch(`/api/history?${params}`, { cache: "no-store" });
+      const r = await fetch(`/api/history?event_id=${selectedEvent}`, { cache: "no-store" });
       const d = await r.json();
       if (!d.error) setHistory(d.series ?? []);
     } catch {}
     setHistoryLoading(false);
-  }, [selectedBracket]);
+  }, [selectedEvent]);
 
-  // Refresh history every 5 min (the direct calls on bracket select handle initial load)
   useEffect(() => {
-    if (!selectedBracket) return;
-    const id = setInterval(() => fetchHistory(), 300000);
+    fetchAllHistory();
+    const id = setInterval(fetchAllHistory, 300000); // refresh every 5 min
     return () => clearInterval(id);
-  }, [selectedBracket]);
+  }, [fetchAllHistory]);
 
   // Pre-fetch bottom panel data for all tabs in background
   const activeBracketForPanel = selectedBracket
@@ -429,7 +427,6 @@ export default function TradePage() {
       if (withShares.length > 0) {
         withShares.sort((a, b) => Math.abs(a.lower_bound - currentCount) - Math.abs(b.lower_bound - currentCount));
         setSelectedBracket(withShares[0].id);
-        fetchHistory(withShares[0].id);
         return;
       }
     }
@@ -438,13 +435,11 @@ export default function TradePage() {
     const active = eventBrackets.find((b) => currentCount >= b.lower_bound && currentCount <= b.upper_bound);
     if (active) {
       setSelectedBracket(active.id);
-      fetchHistory(active.id);
       return;
     }
 
     // 3. Fall back to first bracket
     setSelectedBracket(eventBrackets[0].id);
-    fetchHistory(eventBrackets[0].id);
   }, [selectedEvent, allBrackets, positionsData, tweetCounts, selectedBracket]);
 
   if (!mounted) return <div className="p-4 text-[#808080]">Loading...</div>;
@@ -522,10 +517,7 @@ export default function TradePage() {
                     className={`rounded-lg px-3 py-2 cursor-pointer transition-colors
                       ${isSelected ? "bg-[#1a1a1a] border border-[#3b82f6]/30" : "bg-[#111111] border border-[#1a1a1a]/50 hover:bg-[#151515]"}`}
                     onClick={() => {
-                      if (!isSelected) {
-                        setSelectedBracket(b.id);
-                        fetchHistory(b.id);
-                      }
+                      if (!isSelected) setSelectedBracket(b.id);
                     }}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
@@ -576,19 +568,13 @@ export default function TradePage() {
                   { label: "1W", seconds: 86400 * 7 },
                   { label: "All", seconds: 0 },
                 ].map((tf) => (
-                  <button key={tf.label} onClick={async () => {
+                  <button key={tf.label} onClick={() => {
                     const chart = chartRef.current;
-                    if (!chart || !selectedBracket) return;
+                    if (!chart) return;
                     if (tf.seconds === 0) {
-                      const r = await fetch(`/api/history?bracket_id=${selectedBracket}`, { cache: "no-store" });
-                      const d = await r.json();
-                      if (!d.error) setHistory(d.series ?? []);
                       chart.timeScale().fitContent();
                     } else {
                       const n = Math.floor(Date.now() / 1000);
-                      const r = await fetch(`/api/history?bracket_id=${selectedBracket}&from=${n - tf.seconds}`, { cache: "no-store" });
-                      const d = await r.json();
-                      if (!d.error) setHistory(d.series ?? []);
                       try { chart.timeScale().setVisibleRange({
                         from: (n - tf.seconds) as unknown as import("lightweight-charts").UTCTimestamp,
                         to: n as unknown as import("lightweight-charts").UTCTimestamp,
