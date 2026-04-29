@@ -41,6 +41,24 @@ def init_db(conn) -> None:
                 updated_at INT DEFAULT 0
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS trade_log (
+                id SERIAL PRIMARY KEY,
+                ts INT,
+                side TEXT,
+                order_type TEXT,
+                token_id TEXT,
+                price NUMERIC,
+                size NUMERIC,
+                status TEXT,
+                error TEXT,
+                ms_total INT,
+                ms_creds_read INT,
+                ms_python_start INT,
+                ms_order_post INT,
+                ms_cache_invalidate INT
+            )
+        """)
     conn.commit()
 
 
