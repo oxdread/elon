@@ -53,6 +53,7 @@ export default function TradePage() {
   const [openOrders, setOpenOrders] = useState<any[]>([]);
   const [posTab, setPosTab] = useState<"positions" | "orders" | "history">("positions");
   const prevTweetIdRef = useRef<string | null>(null);
+  const frozenTokensRef = useRef<Map<string, number>>(new Map()); // tokenId → freeze until timestamp
 
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -209,7 +210,23 @@ export default function TradePage() {
         fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ private_key: key, action: "orders", funder, force }) }).then(r => r.json()),
       ]);
-      if (posRes.status === "fulfilled" && Array.isArray(posRes.value)) setPositionsData(posRes.value);
+      if (posRes.status === "fulfilled" && Array.isArray(posRes.value)) {
+        const now = Date.now();
+        const frozen = frozenTokensRef.current;
+        // Clean expired freezes
+        for (const [tid, until] of frozen) { if (now > until) frozen.delete(tid); }
+        if (frozen.size > 0) {
+          // Merge: keep optimistic values for frozen tokens, use poll data for rest
+          setPositionsData((prev) => {
+            const pollMap = new Map(posRes.value.map((p: any) => [p.asset, p]));
+            const frozenPositions = prev.filter((p: any) => frozen.has(p.asset));
+            const unfrozenFromPoll = posRes.value.filter((p: any) => !frozen.has(p.asset));
+            return [...frozenPositions, ...unfrozenFromPoll];
+          });
+        } else {
+          setPositionsData(posRes.value);
+        }
+      }
       if (ordRes.status === "fulfilled" && Array.isArray(ordRes.value)) setOpenOrders(ordRes.value);
     } catch {}
   }, []);
@@ -634,6 +651,8 @@ export default function TradePage() {
                 initialAmount={tradeAmount}
                 onOutcomeChange={setTradeOutcome}
                 onOrderFilled={(trade) => {
+                  // Freeze this token from poll overwrites for 15s
+                  frozenTokensRef.current.set(trade.tokenId, Date.now() + 15000);
                   setPositionsData((prev) => {
                     const existing = prev.find((p: any) => p.asset === trade.tokenId);
                     if (trade.side === "BUY") {
