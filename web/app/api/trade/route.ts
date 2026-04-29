@@ -15,6 +15,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    // Read cached API creds from user_config to skip slow derive step
+    let apiCreds = "None";
+    try {
+      const { rows } = await query(
+        "SELECT api_key, api_secret, api_passphrase FROM user_config WHERE id = 1"
+      );
+      if (rows.length > 0 && rows[0].api_key) {
+        apiCreds = `{"api_key": "${rows[0].api_key}", "api_secret": "${rows[0].api_secret}", "api_passphrase": "${rows[0].api_passphrase}"}`;
+      }
+    } catch {}
+
     let pyCode: string;
     if (order_type === "limit" && price && size) {
       pyCode = `
@@ -28,6 +39,7 @@ r = place_limit_order(
     size=${size},
     side="${side}",
     funder="${funder || ""}",
+    api_creds=${apiCreds},
 )
 print(json.dumps(r))
 `;
@@ -42,6 +54,7 @@ r = place_market_order(
     amount=${amount || size || 1},
     side="${side}",
     funder="${funder || ""}",
+    api_creds=${apiCreds},
 )
 print(json.dumps(r))
 `;

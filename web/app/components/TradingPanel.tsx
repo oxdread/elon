@@ -126,9 +126,13 @@ export default function TradingPanel({
       });
       const d = await r.json();
       if (d.status === "ok") {
-        toast.success("Order placed!", { id: toastId, duration: 3000, style: { ...toastStyle, color: "#0ecb81" } });
-        // Fire and forget — refresh happens in background, positions update via 1s poll
-        onTradeComplete?.().catch(() => {});
+        toast.loading("Order placed! Updating shares...", { id: toastId, style: { ...toastStyle, color: "#0ecb81" } });
+        // Wait for wallet refresh (positions update), then dismiss
+        onTradeComplete?.().then(() => {
+          toast.success("Done", { id: toastId, duration: 2000, style: { ...toastStyle, color: "#0ecb81" } });
+        }).catch(() => {
+          toast.success("Order placed", { id: toastId, duration: 2000, style: { ...toastStyle, color: "#0ecb81" } });
+        });
       } else {
         toast.error(d.error || "Order failed", { id: toastId, duration: 4000, style: { ...toastStyle, color: "#f6465d" } });
       }

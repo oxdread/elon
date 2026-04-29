@@ -219,20 +219,13 @@ export default function TradePage() {
 
   const handleTradeComplete = useCallback(async () => {
     // Block regular polls from overwriting during refresh
-    tradeBlockUntilRef.current = Date.now() + 10000;
-    // Wait 3s for Polymarket to reflect, then force refresh positions + orderbooks
+    tradeBlockUntilRef.current = Date.now() + 8000;
+    // Wait 2s for Polymarket to reflect, then force refresh
+    await new Promise((r) => setTimeout(r, 2000));
+    await refreshWallet(true);
+    // Second refresh 3s later for safety
     await new Promise((r) => setTimeout(r, 3000));
-    const refreshAll = async () => {
-      await refreshWallet(true);
-      try {
-        const booksRes = await fetch("/api/orderbooks-all?force=1", { cache: "no-store" }).then((r) => r.json());
-        if (booksRes && !booksRes.error) setAllOrderbooks(booksRes);
-      } catch {}
-    };
-    await refreshAll();
-    // Again after another 3s
-    await new Promise((r) => setTimeout(r, 3000));
-    await refreshAll();
+    await refreshWallet(true);
     tradeBlockUntilRef.current = 0;
   }, [refreshWallet]);
 

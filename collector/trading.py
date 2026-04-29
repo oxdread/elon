@@ -186,7 +186,7 @@ def get_api_creds(private_key: str, funder: str = "") -> dict:
         return {"error": str(e)}
 
 
-def _get_client(private_key: str, funder: str = "") -> ClobClient:
+def _get_client(private_key: str, funder: str = "", api_creds: dict = None) -> ClobClient:
     """Create an authenticated ClobClient v2."""
     client = ClobClient(
         host=CLOB_HOST,
@@ -195,14 +195,22 @@ def _get_client(private_key: str, funder: str = "") -> ClobClient:
         funder=funder or None,
         signature_type=1,
     )
-    creds = client.create_or_derive_api_key()
-    client.set_api_creds(creds)
+    if api_creds and api_creds.get("api_key"):
+        from py_clob_client_v2.clob_types import ApiCreds
+        client.set_api_creds(ApiCreds(
+            api_key=api_creds["api_key"],
+            api_secret=api_creds["api_secret"],
+            api_passphrase=api_creds["api_passphrase"],
+        ))
+    else:
+        creds = client.create_or_derive_api_key()
+        client.set_api_creds(creds)
     return client
 
 
-def place_market_order(private_key: str, token_id: str, amount: float, side: str, funder: str = "") -> dict:
+def place_market_order(private_key: str, token_id: str, amount: float, side: str, funder: str = "", api_creds: dict = None) -> dict:
     try:
-        client = _get_client(private_key, funder)
+        client = _get_client(private_key, funder, api_creds)
         order_args = MarketOrderArgs(token_id=token_id, amount=amount, side=side.upper())
         signed_order = client.create_market_order(order_args)
         resp = client.post_order(signed_order, OrderType.FAK)
@@ -211,9 +219,9 @@ def place_market_order(private_key: str, token_id: str, amount: float, side: str
         return {"error": str(e)}
 
 
-def place_limit_order(private_key: str, token_id: str, price: float, size: float, side: str, funder: str = "") -> dict:
+def place_limit_order(private_key: str, token_id: str, price: float, size: float, side: str, funder: str = "", api_creds: dict = None) -> dict:
     try:
-        client = _get_client(private_key, funder)
+        client = _get_client(private_key, funder, api_creds)
         order_args = OrderArgs(token_id=token_id, price=price, size=size, side=side.upper())
         signed_order = client.create_order(order_args)
         resp = client.post_order(signed_order, OrderType.GTC)
