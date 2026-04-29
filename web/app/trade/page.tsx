@@ -633,6 +633,31 @@ export default function TradePage() {
                 initialAction={tradeAction}
                 initialAmount={tradeAmount}
                 onOutcomeChange={setTradeOutcome}
+                onOrderFilled={(trade) => {
+                  setPositionsData((prev) => {
+                    const existing = prev.find((p: any) => p.asset === trade.tokenId);
+                    if (trade.side === "BUY") {
+                      if (existing) {
+                        const newSize = parseFloat(existing.size || 0) + trade.size;
+                        return prev.map((p: any) => p.asset === trade.tokenId
+                          ? { ...p, size: String(newSize), currentValue: String(parseFloat(p.currentValue || 0) + trade.size * trade.price) }
+                          : p
+                        );
+                      }
+                      return [...prev, { asset: trade.tokenId, size: String(trade.size), curPrice: String(trade.price), currentValue: String(trade.size * trade.price) }];
+                    } else {
+                      if (existing) {
+                        const newSize = Math.max(0, parseFloat(existing.size || 0) - trade.size);
+                        if (newSize <= 0) return prev.filter((p: any) => p.asset !== trade.tokenId);
+                        return prev.map((p: any) => p.asset === trade.tokenId
+                          ? { ...p, size: String(newSize), currentValue: String(Math.max(0, parseFloat(p.currentValue || 0) - trade.size * trade.price)) }
+                          : p
+                        );
+                      }
+                      return prev;
+                    }
+                  });
+                }}
               />
             </div>
           </div>

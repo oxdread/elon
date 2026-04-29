@@ -9,13 +9,14 @@ type Bracket = {
 };
 
 export default function TradingPanel({
-  bracket, limitPrice, initialAction, initialAmount, onOutcomeChange,
+  bracket, limitPrice, initialAction, initialAmount, onOutcomeChange, onOrderFilled,
 }: {
   bracket: Bracket | null;
   limitPrice?: number | null;
   initialAction?: "buy" | "sell";
   initialAmount?: string;
   onOutcomeChange?: (outcome: "yes" | "no") => void;
+  onOrderFilled?: (trade: { tokenId: string; side: string; size: number; price: number }) => void;
 }) {
   const [action, setAction] = useState<"buy" | "sell">("buy");
   const [outcome, setOutcome] = useState<"yes" | "no">("yes");
@@ -137,6 +138,7 @@ export default function TradingPanel({
 
       if (d.status === "ok") {
         toast.success(`Order placed! ${timing}`, { id: toastId, duration: 5000, style: { ...toastStyle, color: "#0ecb81" } });
+        onOrderFilled?.({ tokenId: bracket.yes_token_id!, side, size: shares, price: priceNum / 100 });
       } else {
         toast.error(`${d.error || "Order failed"} ${timing}`, { id: toastId, duration: 6000, style: { ...toastStyle, color: "#f6465d" } });
       }
