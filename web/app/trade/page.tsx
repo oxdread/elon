@@ -652,7 +652,7 @@ export default function TradePage() {
                 onOutcomeChange={setTradeOutcome}
                 onOrderFilled={(trade) => {
                   // Freeze this token from poll overwrites for 15s
-                  frozenTokensRef.current.set(trade.tokenId, Date.now() + 15000);
+                  frozenTokensRef.current.set(trade.tokenId, Date.now() + 10000);
                   setPositionsData((prev) => {
                     const existing = prev.find((p: any) => p.asset === trade.tokenId);
                     if (trade.side === "BUY") {
