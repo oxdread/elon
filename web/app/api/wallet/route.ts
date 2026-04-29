@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { execSync } from "child_process";
+import { exec } from "child_process";
 import path from "path";
 import { query } from "@/lib/db";
 
@@ -7,10 +7,15 @@ const PYTHON = path.join(process.cwd(), "..", ".venv", "bin", "python3");
 const CWD = path.join(process.cwd(), "..");
 const CACHE_TTL = 2; // seconds
 
-function runPython(pyCode: string): string {
-  return execSync(`${PYTHON} -c '${pyCode.replace(/'/g, "'\\''")}'`, {
-    timeout: 30000, encoding: "utf-8", cwd: CWD,
-  }).trim();
+function runPython(pyCode: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    exec(`${PYTHON} -c '${pyCode.replace(/'/g, "'\\''")}'`, {
+      timeout: 30000, encoding: "utf-8", cwd: CWD,
+    }, (err, stdout, stderr) => {
+      if (err) reject(err);
+      else resolve((stdout as string).trim());
+    });
+  });
 }
 
 async function getCachedWallet(funder: string): Promise<{ balance: string; portfolio_value: number; positions: unknown[]; open_orders: unknown[]; updated_at: number } | null> {
@@ -72,15 +77,13 @@ export async function POST(req: NextRequest) {
       if (cached && isFresh(cached.updated_at)) {
         return NextResponse.json(cached.positions);
       }
-      // Fetch fresh
       const pyCode = `
 import json, sys
 sys.path.insert(0, "${CWD}")
 from collector.trading import get_positions
 print(json.dumps(get_positions("${funder}")))
 `;
-      const result = JSON.parse(runPython(pyCode));
-      // Compute portfolio value
+      const result = JSON.parse(await runPython(pyCode));
       let pv = 0;
       if (Array.isArray(result)) {
         for (const p of result) pv += parseFloat(p.currentValue || 0);
@@ -100,7 +103,7 @@ sys.path.insert(0, "${CWD}")
 from collector.trading import get_balance
 print(json.dumps(get_balance("${safeKey}", "${funder}")))
 `;
-      const result = JSON.parse(runPython(pyCode));
+      const result = JSON.parse(await runPython(pyCode));
       if (funder && result.balance) {
         await upsertWalletCache(funder, { balance: result.balance });
       }
@@ -118,7 +121,7 @@ sys.path.insert(0, "${CWD}")
 from collector.trading import get_open_orders
 print(json.dumps(get_open_orders("${safeKey}")))
 `;
-      const result = JSON.parse(runPython(pyCode));
+      const result = JSON.parse(await runPython(pyCode));
       if (funder) {
         await upsertWalletCache(funder, { open_orders: result });
       }
@@ -141,7 +144,7 @@ sys.path.insert(0, "${CWD}")
 from collector.trading import get_full_account
 print(json.dumps(get_full_account("${safeKey}")))
 `;
-      const result = JSON.parse(runPython(pyCode));
+      const result = JSON.parse(await runPython(pyCode));
       if (result.funder || funder) {
         await upsertWalletCache(result.funder || funder, {
           balance: result.cash,
@@ -153,10 +156,9 @@ print(json.dumps(get_full_account("${safeKey}")))
       return NextResponse.json(result);
     }
 
-    // --- Non-cached actions (info, trades, trade execution) ---
+    // --- Non-cached actions (info, trades) ---
 
     if (action === "info") {
-      // Get wallet info + derive API creds and save to user_config for WS auth
       const infoPyCode = `
 import json, sys
 sys.path.insert(0, "${CWD}")
@@ -165,8 +167,7 @@ info = get_wallet_info("${safeKey}")
 creds = get_api_creds("${safeKey}", "${funder}")
 print(json.dumps({**info, "creds": creds}))
 `;
-      const result = JSON.parse(runPython(infoPyCode));
-      // Save API creds to user_config for collector's user WS channel
+      const result = JSON.parse(await runPython(infoPyCode));
       if (result.creds && !result.creds.error) {
         try {
           await query(
@@ -187,7 +188,7 @@ sys.path.insert(0, "${CWD}")
 from collector.trading import get_trade_history
 print(json.dumps(get_trade_history("${safeKey}")))
 `;
-      return NextResponse.json(JSON.parse(runPython(tradesPyCode)));
+      return NextResponse.json(JSON.parse(await runPython(tradesPyCode)));
     } else {
       return NextResponse.json({ error: "Invalid action" }, { status: 400 });
     }

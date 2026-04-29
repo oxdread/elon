@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { execSync } from "child_process";
+import { exec } from "child_process";
 import path from "path";
 import { query } from "@/lib/db";
 
 const PYTHON = path.join(process.cwd(), "..", ".venv", "bin", "python3");
 const CWD = path.join(process.cwd(), "..");
+
+function runPython(pyCode: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    exec(`${PYTHON} -c '${pyCode.replace(/'/g, "'\\''")}'`, {
+      timeout: 30000, encoding: "utf-8", cwd: CWD,
+    }, (err, stdout, stderr) => {
+      if (err) reject(err);
+      else resolve((stdout as string).trim());
+    });
+  });
+}
 
 export async function POST(req: NextRequest) {
   const t0 = Date.now();
@@ -32,7 +43,7 @@ export async function POST(req: NextRequest) {
     } catch {}
     msCreds = Date.now() - t1;
 
-    // Step 2: Run Python to place order
+    // Step 2: Run Python to place order (async — doesn't block other requests)
     const t2 = Date.now();
     let pyCode: string;
     if (order_type === "limit" && price && size) {
@@ -68,14 +79,10 @@ print(json.dumps(r))
 `;
     }
 
-    const result = execSync(`${PYTHON} -c '${pyCode.replace(/'/g, "'\\''")}'`, {
-      timeout: 30000,
-      encoding: "utf-8",
-      cwd: CWD,
-    });
+    const result = await runPython(pyCode);
     msPython = Date.now() - t2;
 
-    const parsed = JSON.parse(result.trim());
+    const parsed = JSON.parse(result);
 
     // Step 3: Invalidate wallet cache
     const t3 = Date.now();
@@ -112,7 +119,6 @@ print(json.dumps(r))
     return NextResponse.json(parsed);
   } catch (e) {
     const msTotal = Date.now() - t0;
-    // Log error too
     try {
       await query(
         `INSERT INTO trade_log (ts, side, order_type, status, error, ms_total, ms_creds_read, ms_python_start, ms_order_post, ms_cache_invalidate)
