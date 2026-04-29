@@ -102,6 +102,7 @@ export default function TradingPanel({
     const funder = localStorage.getItem("poly_funder") || "";
     setLoading(true);
     const toastStyle = { background: "#141414", color: "#e5e5e5", border: "1px solid #252525", borderRadius: "12px" };
+    const t0 = performance.now();
     const toastId = toast.loading("Placing order...", { position: "bottom-right", style: toastStyle });
     try {
       const side = action === "buy" ? "BUY" : "SELL";
@@ -118,19 +119,30 @@ export default function TradingPanel({
       } else {
         body.amount = total;
       }
+      const tFetch = performance.now();
       const r = await fetch("/api/trade", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      const tResponse = performance.now();
       const d = await r.json();
+      const tParsed = performance.now();
+
+      const msNetwork = Math.round(tFetch - t0);
+      const msApi = Math.round(tResponse - tFetch);
+      const msParse = Math.round(tParsed - tResponse);
+      const msTotal = Math.round(tParsed - t0);
+      const timing = `${(msTotal/1000).toFixed(1)}s (prep:${msNetwork}ms api:${msApi}ms parse:${msParse}ms)`;
+
       if (d.status === "ok") {
-        toast.success("Order placed!", { id: toastId, duration: 3000, style: { ...toastStyle, color: "#0ecb81" } });
+        toast.success(`Order placed! ${timing}`, { id: toastId, duration: 5000, style: { ...toastStyle, color: "#0ecb81" } });
       } else {
-        toast.error(d.error || "Order failed", { id: toastId, duration: 4000, style: { ...toastStyle, color: "#f6465d" } });
+        toast.error(`${d.error || "Order failed"} ${timing}`, { id: toastId, duration: 6000, style: { ...toastStyle, color: "#f6465d" } });
       }
     } catch (e) {
-      toast.error(String(e), { id: toastId, duration: 4000, style: { ...toastStyle, color: "#f6465d" } });
+      const msTotal = Math.round(performance.now() - t0);
+      toast.error(`${String(e).slice(0, 100)} (${(msTotal/1000).toFixed(1)}s)`, { id: toastId, duration: 6000, style: { ...toastStyle, color: "#f6465d" } });
     }
     setLoading(false);
   };
