@@ -176,24 +176,23 @@ export default function TradePage() {
     return () => clearInterval(id);
   }, [selectedEvent]);
 
-  const fetchHistory = useCallback(async (bracketId?: string) => {
+  const fetchHistory = useCallback(async (bracketId?: string, fromTs?: number) => {
     const bid = bracketId || selectedBracket;
     if (!bid) return;
     setHistoryLoading(true);
     try {
-      const from24h = Math.floor(Date.now() / 1000) - 86400;
-      const r = await fetch(`/api/history?bracket_id=${bid}&from=${from24h}`, { cache: "no-store" });
+      const params = `bracket_id=${bid}${fromTs ? `&from=${fromTs}` : ""}`;
+      const r = await fetch(`/api/history?${params}`, { cache: "no-store" });
       const d = await r.json();
       if (!d.error) setHistory(d.series ?? []);
     } catch {}
     setHistoryLoading(false);
   }, [selectedBracket]);
 
-  // Fetch history when selected bracket changes, refresh every 5 min
+  // Refresh history every 5 min (the direct calls on bracket select handle initial load)
   useEffect(() => {
     if (!selectedBracket) return;
-    fetchHistory();
-    const id = setInterval(fetchHistory, 300000);
+    const id = setInterval(() => fetchHistory(), 300000);
     return () => clearInterval(id);
   }, [selectedBracket]);
 

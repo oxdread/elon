@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
 const cache = new Map<string, { data: unknown; ts: number }>();
-const CACHE_TTL = 15000; // 15 seconds
+const CACHE_TTL = 60000; // 60 seconds — hourly candles barely change
 
 export async function GET(req: NextRequest) {
   try {
