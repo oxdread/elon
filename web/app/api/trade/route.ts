@@ -23,8 +23,32 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { private_key, token_id, amount, price, size, side, order_type, funder, _t0 } = body;
+    const { private_key, token_id, amount, price, size, side, order_type, funder, _t0, action, order_id } = body;
     const msClientToServer = _t0 ? Date.now() - _t0 : 0;
+
+    // Cancel order action
+    if (action === "cancel" && private_key && order_id) {
+      let apiCreds = "None";
+      try {
+        const { rows } = await query("SELECT api_key, api_secret, api_passphrase FROM user_config WHERE id = 1");
+        if (rows.length > 0 && rows[0].api_key) {
+          apiCreds = `{"api_key": "${rows[0].api_key}", "api_secret": "${rows[0].api_secret}", "api_passphrase": "${rows[0].api_passphrase}"}`;
+        }
+      } catch {}
+      const pyCode = `
+import json, sys
+sys.path.insert(0, "${CWD}")
+from collector.trading import cancel_order
+r = cancel_order("${private_key}", "${order_id}", ${apiCreds})
+print(json.dumps(r))
+`;
+      try {
+        const result = await runPython(pyCode);
+        return NextResponse.json(JSON.parse(result));
+      } catch (e) {
+        return NextResponse.json({ error: String(e) }, { status: 500 });
+      }
+    }
 
     if (!private_key || !token_id || !side) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });

@@ -230,9 +230,9 @@ def place_limit_order(private_key: str, token_id: str, price: float, size: float
         return {"error": str(e)}
 
 
-def cancel_order(private_key: str, order_id: str) -> dict:
+def cancel_order(private_key: str, order_id: str, api_creds: dict = None) -> dict:
     try:
-        client = _get_client(private_key)
+        client = _get_client(private_key, api_creds=api_creds)
         resp = client.cancel_order(order_id)
         return {"status": "ok", "response": resp}
     except Exception as e:

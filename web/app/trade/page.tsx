@@ -652,9 +652,9 @@ export default function TradePage() {
                 onOutcomeChange={setTradeOutcome}
                 onOrderFilled={(trade) => {
                   // Freeze this token from poll overwrites for 10s
-                  frozenTokensRef.current.set(trade.tokenId, Date.now() + 10000);
-                  // Tell Header to refresh cash/portfolio
-                  window.dispatchEvent(new Event("trade-executed"));
+                  frozenTokensRef.current.set(trade.tokenId, Date.now() + 15000);
+                  // Tell Header to optimistically update cash/portfolio
+                  window.dispatchEvent(new CustomEvent("trade-executed", { detail: trade }));
                   setPositionsData((prev) => {
                     const existing = prev.find((p: any) => p.asset === trade.tokenId);
                     if (trade.side === "BUY") {
@@ -786,15 +786,49 @@ export default function TradePage() {
                   openOrders.length === 0 ? (
                     <div className="p-3 text-[#555555] text-xs">No open orders</div>
                   ) : (
-                    openOrders.map((o, i) => (
-                      <div key={i} className="flex items-center px-3 py-1.5 border-b border-[#1a1a1a]/40 text-[11px]">
-                        <span className={`font-bold ${o.side === "BUY" ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{o.side}</span>
-                        <span className="ml-2 text-[#e5e5e5] tabular-nums">{o.original_size || o.size}</span>
-                        <span className="ml-1 text-[#555555]">@</span>
-                        <span className="ml-1 text-[#e5e5e5] tabular-nums">{o.price}</span>
-                        <span className="ml-auto text-[#555555]">{o.status || "open"}</span>
-                      </div>
-                    ))
+                    openOrders.map((o, i) => {
+                      const bracket = allBrackets.find((b) => b.yes_token_id === o.asset_id || b.no_token_id === o.asset_id);
+                      const priceCents = parseFloat(o.price || 0) * 100;
+                      const origSize = parseFloat(o.original_size || o.size || 0);
+                      const filledSize = origSize - parseFloat(o.size_matched || 0);
+                      const ts = parseInt(o.timestamp || "0");
+                      const age = ts ? Math.floor(Date.now() / 1000) - Math.floor(ts / 1000) : 0;
+                      const ageStr = age < 60 ? `${age}s` : age < 3600 ? `${Math.floor(age / 60)}m` : `${Math.floor(age / 3600)}h`;
+                      return (
+                        <div key={o.id || i} className="flex items-center px-3 py-2 border-b border-[#1a1a1a]/40 text-[11px] gap-2">
+                          <span className={`font-bold w-8 ${o.side === "BUY" ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{o.side}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[#e5e5e5] font-medium truncate">{bracket?.label || "—"}</div>
+                            <div className="text-[#555555] text-[10px]">
+                              {origSize.toFixed(1)} shares @ {priceCents.toFixed(1)}¢
+                            </div>
+                          </div>
+                          <span className="text-[#555555] text-[10px] shrink-0">{ageStr}</span>
+                          <button
+                            className="text-[#f6465d] hover:text-red-400 text-[10px] font-bold px-1.5 py-0.5 rounded hover:bg-[#f6465d]/10 transition-colors shrink-0"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const key = localStorage.getItem("poly_private_key");
+                              if (!key || !o.id) return;
+                              const btn = e.currentTarget;
+                              btn.textContent = "...";
+                              try {
+                                const r = await fetch("/api/trade", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ private_key: key, action: "cancel", order_id: o.id }),
+                                });
+                                const d = await r.json();
+                                if (d.status === "ok") {
+                                  setOpenOrders((prev) => prev.filter((x) => x.id !== o.id));
+                                }
+                              } catch {}
+                              btn.textContent = "Cancel";
+                            }}
+                          >Cancel</button>
+                        </div>
+                      );
+                    })
                   )
                 ) : (
                   (() => {

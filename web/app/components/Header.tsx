@@ -70,8 +70,22 @@ export default function Header() {
 
     fetchWallet();
     const id = setInterval(fetchWallet, 15000);
-    // Listen for trade events to refresh immediately
-    const onTrade = () => fetchWallet();
+    // Listen for trade events — optimistically update cash/portfolio
+    const onTrade = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { side: string; size: number; price: number } | undefined;
+      if (detail) {
+        const cost = detail.size * detail.price;
+        if (detail.side === "BUY") {
+          setCash((prev) => prev != null ? String(parseFloat(prev) - cost * 1e6) : prev);
+          setPortfolio((prev) => prev != null ? prev + cost : prev);
+        } else {
+          setCash((prev) => prev != null ? String(parseFloat(prev) + cost * 1e6) : prev);
+          setPortfolio((prev) => prev != null ? Math.max(0, prev - cost) : prev);
+        }
+      }
+      // Also refresh from server after a delay
+      setTimeout(fetchWallet, 5000);
+    };
     window.addEventListener("trade-executed", onTrade);
     return () => { clearInterval(id); window.removeEventListener("trade-executed", onTrade); };
   }, []);
