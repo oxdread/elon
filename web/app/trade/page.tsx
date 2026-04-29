@@ -487,9 +487,9 @@ export default function TradePage() {
       const tokenIds = new Set(positionsData.map((p) => p.asset));
       const withShares = eventBrackets.filter((b) => tokenIds.has(b.yes_token_id) || tokenIds.has(b.no_token_id));
       if (withShares.length > 0) {
-        // Pick the one closest to current tweet count
         withShares.sort((a, b) => Math.abs(a.lower_bound - currentCount) - Math.abs(b.lower_bound - currentCount));
         setSelectedBracket(withShares[0].id);
+        fetchHistory(withShares[0].id);
         return;
       }
     }
@@ -498,11 +498,13 @@ export default function TradePage() {
     const active = eventBrackets.find((b) => currentCount >= b.lower_bound && currentCount <= b.upper_bound);
     if (active) {
       setSelectedBracket(active.id);
+      fetchHistory(active.id);
       return;
     }
 
     // 3. Fall back to first bracket
     setSelectedBracket(eventBrackets[0].id);
+    fetchHistory(eventBrackets[0].id);
   }, [selectedEvent, allBrackets, positionsData, tweetCounts, selectedBracket]);
 
   if (!mounted) return <div className="p-4 text-[#808080]">Loading...</div>;
@@ -580,7 +582,10 @@ export default function TradePage() {
                     className={`rounded-lg px-3 py-2 cursor-pointer transition-colors
                       ${isSelected ? "bg-[#1a1a1a] border border-[#3b82f6]/30" : "bg-[#111111] border border-[#1a1a1a]/50 hover:bg-[#151515]"}`}
                     onClick={() => {
-                      if (!isSelected) setSelectedBracket(b.id);
+                      if (!isSelected) {
+                        setSelectedBracket(b.id);
+                        fetchHistory(b.id);
+                      }
                     }}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
@@ -623,7 +628,7 @@ export default function TradePage() {
             {/* Graph */}
             <div className="flex-1 min-w-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden relative">
               {historyLoading && history.length === 0 && <ChartShimmer />}
-              <div ref={chartContainerRef} className={`w-full h-full ${historyLoading && history.length === 0 ? "hidden" : ""}`} />
+              <div ref={chartContainerRef} className="w-full h-full" />
               <div className="absolute top-2 right-2 z-10 flex gap-1">
                 {[
                   { label: "1D", seconds: 86400 },
