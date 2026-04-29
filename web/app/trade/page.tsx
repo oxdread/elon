@@ -172,7 +172,7 @@ export default function TradePage() {
       } catch {}
     };
     tick();
-    const id = setInterval(tick, 5000);
+    const id = setInterval(tick, 2000);
     return () => clearInterval(id);
   }, [selectedEvent]);
 
