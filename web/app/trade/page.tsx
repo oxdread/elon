@@ -53,7 +53,6 @@ export default function TradePage() {
   const [openOrders, setOpenOrders] = useState<any[]>([]);
   const [posTab, setPosTab] = useState<"positions" | "orders" | "history">("positions");
   const prevTweetIdRef = useRef<string | null>(null);
-  const tradeBlockUntilRef = useRef(0); // block regular polls from overwriting positions after a trade
 
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -203,8 +202,6 @@ export default function TradePage() {
     const key = typeof window !== "undefined" ? localStorage.getItem("poly_private_key") : null;
     const funder = typeof window !== "undefined" ? localStorage.getItem("poly_funder") : null;
     if (!key || !funder) return;
-    // During trade block window, only force refreshes can update positions
-    const isBlocked = !force && Date.now() < tradeBlockUntilRef.current;
     try {
       const [posRes, ordRes] = await Promise.allSettled([
         fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -212,22 +209,10 @@ export default function TradePage() {
         fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ private_key: key, action: "orders", funder, force }) }).then(r => r.json()),
       ]);
-      if (!isBlocked && posRes.status === "fulfilled" && Array.isArray(posRes.value)) setPositionsData(posRes.value);
+      if (posRes.status === "fulfilled" && Array.isArray(posRes.value)) setPositionsData(posRes.value);
       if (ordRes.status === "fulfilled" && Array.isArray(ordRes.value)) setOpenOrders(ordRes.value);
     } catch {}
   }, []);
-
-  const handleTradeComplete = useCallback(async () => {
-    // Block regular polls from overwriting during refresh
-    tradeBlockUntilRef.current = Date.now() + 8000;
-    // Wait 2s for Polymarket to reflect, then force refresh
-    await new Promise((r) => setTimeout(r, 2000));
-    await refreshWallet(true);
-    // Second refresh 3s later for safety
-    await new Promise((r) => setTimeout(r, 3000));
-    await refreshWallet(true);
-    tradeBlockUntilRef.current = 0;
-  }, [refreshWallet]);
 
   useEffect(() => {
     if (!activeBracketForPanel) return;
@@ -648,7 +633,6 @@ export default function TradePage() {
                 initialAction={tradeAction}
                 initialAmount={tradeAmount}
                 onOutcomeChange={setTradeOutcome}
-                onTradeComplete={handleTradeComplete}
               />
             </div>
           </div>

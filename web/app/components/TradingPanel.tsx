@@ -9,14 +9,13 @@ type Bracket = {
 };
 
 export default function TradingPanel({
-  bracket, limitPrice, initialAction, initialAmount, onOutcomeChange, onTradeComplete,
+  bracket, limitPrice, initialAction, initialAmount, onOutcomeChange,
 }: {
   bracket: Bracket | null;
   limitPrice?: number | null;
   initialAction?: "buy" | "sell";
   initialAmount?: string;
   onOutcomeChange?: (outcome: "yes" | "no") => void;
-  onTradeComplete?: () => Promise<void>;
 }) {
   const [action, setAction] = useState<"buy" | "sell">("buy");
   const [outcome, setOutcome] = useState<"yes" | "no">("yes");
@@ -126,13 +125,7 @@ export default function TradingPanel({
       });
       const d = await r.json();
       if (d.status === "ok") {
-        toast.loading("Order placed! Updating shares...", { id: toastId, style: { ...toastStyle, color: "#0ecb81" } });
-        // Dismiss after refresh completes, or after 10s max
-        const dismissToast = () => toast.success("Done", { id: toastId, duration: 2000, style: { ...toastStyle, color: "#0ecb81" } });
-        const timeout = setTimeout(dismissToast, 10000);
-        if (onTradeComplete) {
-          onTradeComplete().finally(() => { clearTimeout(timeout); dismissToast(); });
-        }
+        toast.success("Order placed!", { id: toastId, duration: 3000, style: { ...toastStyle, color: "#0ecb81" } });
       } else {
         toast.error(d.error || "Order failed", { id: toastId, duration: 4000, style: { ...toastStyle, color: "#f6465d" } });
       }
