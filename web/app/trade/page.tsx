@@ -343,84 +343,25 @@ export default function TradePage() {
 
     for (const h of seriesToRender) {
       const idx = brackets.findIndex((b) => b.id === h.bracket);
-      const isSelected = selectedBracket === h.bracket;
       const label = brackets[idx]?.label ?? h.label;
       const rawPoints = h.points.filter((p) => p.mid != null)
         .map((p) => ({ time: p.ts, value: p.mid as number }));
-      if (rawPoints.length === 0) continue;
 
-      // Monotone cubic interpolation — smooth but NEVER overshoots
-      const resampled = (() => {
-        const BUCKET = 600; // 10-minute buckets to avoid overcrowding
-        const bucketMap = new Map<number, number>();
-        for (const p of rawPoints) {
-          const bucket = Math.floor(p.time / BUCKET) * BUCKET;
-          bucketMap.set(bucket, p.value);
+      // Append live mid price as current hour point
+      const liveBracket = brackets[idx];
+      if (liveBracket?.mid != null) {
+        const nowHour = Math.floor(Date.now() / 1000 / 3600) * 3600;
+        const lastPoint = rawPoints[rawPoints.length - 1];
+        if (lastPoint && lastPoint.time === nowHour) {
+          lastPoint.value = liveBracket.mid; // update current hour
+        } else {
+          rawPoints.push({ time: nowHour, value: liveBracket.mid });
         }
-        return Array.from(bucketMap.entries()).sort((a, b) => a[0] - b[0]).map(([time, value]) => ({ time, value }));
-      })();
-
-      const interpolated: { time: number; value: number }[] = [];
-      const rn = resampled.length;
-      if (rn < 2) {
-        interpolated.push(...resampled);
-      } else {
-        // Compute slopes with Fritsch-Carlson monotone method
-        const dx: number[] = [];
-        const dy: number[] = [];
-        const m: number[] = [];
-        for (let i = 0; i < rn - 1; i++) {
-          dx.push(resampled[i + 1].time - resampled[i].time);
-          dy.push(resampled[i + 1].value - resampled[i].value);
-          m.push(dy[i] / dx[i]);
-        }
-        // Compute tangents
-        const tangents: number[] = [m[0]];
-        for (let i = 1; i < rn - 1; i++) {
-          if (m[i - 1] * m[i] <= 0) {
-            tangents.push(0); // sign change = flat tangent (prevents overshoot)
-          } else {
-            tangents.push((m[i - 1] + m[i]) / 2);
-          }
-        }
-        tangents.push(m[rn - 2]);
-        // Fritsch-Carlson: clamp tangents to prevent overshoot
-        for (let i = 0; i < rn - 1; i++) {
-          if (Math.abs(m[i]) < 1e-10) {
-            tangents[i] = 0;
-            tangents[i + 1] = 0;
-          } else {
-            const a = tangents[i] / m[i];
-            const b = tangents[i + 1] / m[i];
-            if (a * a + b * b > 9) {
-              const s = 3 / Math.sqrt(a * a + b * b);
-              tangents[i] = s * a * m[i];
-              tangents[i + 1] = s * b * m[i];
-            }
-          }
-        }
-        // Generate interpolated points
-        const STEPS = 6;
-        for (let i = 0; i < rn - 1; i++) {
-          interpolated.push(resampled[i]);
-          const h = dx[i];
-          for (let s = 1; s <= STEPS; s++) {
-            const t = s / (STEPS + 1);
-            const t2 = t * t;
-            const t3 = t2 * t;
-            // Hermite basis
-            const h00 = 2 * t3 - 3 * t2 + 1;
-            const h10 = t3 - 2 * t2 + t;
-            const h01 = -2 * t3 + 3 * t2;
-            const h11 = t3 - t2;
-            const v = h00 * resampled[i].value + h10 * h * tangents[i] + h01 * resampled[i + 1].value + h11 * h * tangents[i + 1];
-            interpolated.push({ time: Math.round(resampled[i].time + h * t), value: v });
-          }
-        }
-        interpolated.push(resampled[rn - 1]);
       }
 
-      const points = interpolated.map((p) => ({
+      if (rawPoints.length === 0) continue;
+
+      const points = rawPoints.map((p) => ({
         time: p.time as unknown as import("lightweight-charts").UTCTimestamp,
         value: p.value,
       }));
