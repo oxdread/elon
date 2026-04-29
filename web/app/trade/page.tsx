@@ -385,7 +385,7 @@ export default function TradePage() {
         topColor: "rgba(59, 130, 246, 0.08)",
         bottomColor: "rgba(59, 130, 246, 0.0)",
         lineWidth: 2,
-        lineType: LineType.Simple,
+        lineType: LineType.Curved,
         crosshairMarkerVisible: true,
         crosshairMarkerRadius: 5,
         crosshairMarkerBorderColor: "#3b82f6",
