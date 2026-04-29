@@ -127,12 +127,12 @@ export default function TradingPanel({
       const d = await r.json();
       if (d.status === "ok") {
         toast.loading("Order placed! Updating shares...", { id: toastId, style: { ...toastStyle, color: "#0ecb81" } });
-        // Wait for wallet refresh (positions update), then dismiss
-        onTradeComplete?.().then(() => {
-          toast.success("Done", { id: toastId, duration: 2000, style: { ...toastStyle, color: "#0ecb81" } });
-        }).catch(() => {
-          toast.success("Order placed", { id: toastId, duration: 2000, style: { ...toastStyle, color: "#0ecb81" } });
-        });
+        // Dismiss after refresh completes, or after 10s max
+        const dismissToast = () => toast.success("Done", { id: toastId, duration: 2000, style: { ...toastStyle, color: "#0ecb81" } });
+        const timeout = setTimeout(dismissToast, 10000);
+        if (onTradeComplete) {
+          onTradeComplete().finally(() => { clearTimeout(timeout); dismissToast(); });
+        }
       } else {
         toast.error(d.error || "Order failed", { id: toastId, duration: 4000, style: { ...toastStyle, color: "#f6465d" } });
       }
