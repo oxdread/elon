@@ -40,17 +40,17 @@ export default function Header() {
     return () => clearInterval(id);
   }, []);
 
-  // Wallet: initial load + polling every 15s
+  // Wallet: initial load, then WS account_update takes over
   useEffect(() => {
-    const fetchWallet = async () => {
-      const key = localStorage.getItem("poly_private_key");
-      const funder = localStorage.getItem("poly_funder");
-      if (!key) { setHasWallet(false); return; }
-      setHasWallet(true);
-      setWalletAddr(funder);
+    const key = localStorage.getItem("poly_private_key");
+    const funder = localStorage.getItem("poly_funder");
+    if (!key) { setHasWallet(false); return; }
+    setHasWallet(true);
+    setWalletAddr(funder);
 
+    // One-time initial fetch
+    (async () => {
       try {
-        // Get balance
         const balRes = await fetch("/api/wallet", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -59,35 +59,38 @@ export default function Header() {
         const bal = await balRes.json();
         if (!bal.error) setCash(bal.balance);
 
-        // Get portfolio value from data-api
         if (funder) {
           const valRes = await fetch(`https://data-api.polymarket.com/value?user=${funder}`);
           const valData = await valRes.json();
           if (Array.isArray(valData) && valData[0]) setPortfolio(valData[0].value);
         }
       } catch {}
-    };
+    })();
 
-    fetchWallet();
-    const id = setInterval(fetchWallet, 15000);
-    // Listen for trade events — optimistically update cash/portfolio
-    const onTrade = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { side: string; size: number; price: number } | undefined;
-      if (detail) {
-        const cost = detail.size * detail.price;
-        if (detail.side === "BUY") {
-          setCash((prev) => prev != null ? String(parseFloat(prev) - cost * 1e6) : prev);
-          setPortfolio((prev) => prev != null ? prev + cost : prev);
-        } else {
-          setCash((prev) => prev != null ? String(parseFloat(prev) + cost * 1e6) : prev);
-          setPortfolio((prev) => prev != null ? Math.max(0, prev - cost) : prev);
-        }
-      }
-      // Also refresh from server after a delay
-      setTimeout(fetchWallet, 5000);
+    // Listen for WS account_update pushed by user_feed.py
+    const wsUrl = typeof window !== "undefined"
+      ? `ws://${window.location.hostname}:3001`
+      : "ws://localhost:3001";
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout>;
+
+    const connect = () => {
+      ws = new WebSocket(wsUrl);
+      ws.onmessage = (e) => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === "account_update" && msg.data) {
+            if (msg.data.balance) setCash(msg.data.balance);
+            if (msg.data.portfolio_value != null) setPortfolio(msg.data.portfolio_value);
+          }
+        } catch {}
+      };
+      ws.onclose = () => { reconnectTimer = setTimeout(connect, 3000); };
+      ws.onerror = () => { ws?.close(); };
     };
-    window.addEventListener("trade-executed", onTrade);
-    return () => { clearInterval(id); window.removeEventListener("trade-executed", onTrade); };
+    connect();
+
+    return () => { clearTimeout(reconnectTimer); ws?.close(); };
   }, []);
 
   const statusAge = mounted && status?.last_poll_ts ? now - status.last_poll_ts : null;

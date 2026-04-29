@@ -53,7 +53,6 @@ export default function TradePage() {
   const [openOrders, setOpenOrders] = useState<any[]>([]);
   const [posTab, setPosTab] = useState<"positions" | "orders" | "history">("positions");
   const prevTweetIdRef = useRef<string | null>(null);
-  const frozenTokensRef = useRef<Map<string, number>>(new Map()); // tokenId → freeze until timestamp
 
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -131,13 +130,10 @@ export default function TradePage() {
               }
             } catch {}
           }
-          // User channel: trade confirmed → force refresh wallet
-          if (msg.type === "trade_update" && msg.data?.status === "CONFIRMED") {
-            refreshWallet(true);
-          }
-          // User channel: order placed/cancelled → force refresh wallet
-          if (msg.type === "order_update") {
-            refreshWallet(true);
+          // User channel: full account update from WS
+          if (msg.type === "account_update" && msg.data) {
+            if (Array.isArray(msg.data.positions)) setPositionsData(msg.data.positions);
+            if (Array.isArray(msg.data.open_orders)) setOpenOrders(msg.data.open_orders);
           }
         } catch {}
       };
@@ -199,37 +195,24 @@ export default function TradePage() {
     ? allBrackets.find((b) => b.id === selectedBracket)
     : (selectedEvent ? allBrackets.find((b) => b.event_id === selectedEvent) : null);
 
-  const refreshWallet = useCallback(async (force = false) => {
+  // Initial wallet load (one-time, WS takes over after)
+  useEffect(() => {
     const key = typeof window !== "undefined" ? localStorage.getItem("poly_private_key") : null;
     const funder = typeof window !== "undefined" ? localStorage.getItem("poly_funder") : null;
     if (!key || !funder) return;
-    try {
-      const [posRes, ordRes] = await Promise.allSettled([
-        fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ private_key: key, action: "positions", funder, force }) }).then(r => r.json()),
-        fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ private_key: key, action: "orders", funder, force }) }).then(r => r.json()),
-      ]);
-      if (posRes.status === "fulfilled" && Array.isArray(posRes.value)) {
-        const now = Date.now();
-        const frozen = frozenTokensRef.current;
-        // Clean expired freezes
-        for (const [tid, until] of frozen) { if (now > until) frozen.delete(tid); }
-        if (frozen.size > 0) {
-          // Merge: keep optimistic values for frozen tokens, use poll data for rest
-          setPositionsData((prev) => {
-            const pollMap = new Map(posRes.value.map((p: any) => [p.asset, p]));
-            const frozenPositions = prev.filter((p: any) => frozen.has(p.asset));
-            const unfrozenFromPoll = posRes.value.filter((p: any) => !frozen.has(p.asset));
-            return [...frozenPositions, ...unfrozenFromPoll];
-          });
-        } else {
-          setPositionsData(posRes.value);
-        }
-      }
-      if (ordRes.status === "fulfilled" && Array.isArray(ordRes.value)) setOpenOrders(ordRes.value);
-    } catch {}
-  }, []);
+    (async () => {
+      try {
+        const [posRes, ordRes] = await Promise.allSettled([
+          fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ private_key: key, action: "positions", funder }) }).then(r => r.json()),
+          fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ private_key: key, action: "orders", funder }) }).then(r => r.json()),
+        ]);
+        if (posRes.status === "fulfilled" && Array.isArray(posRes.value)) setPositionsData(posRes.value);
+        if (ordRes.status === "fulfilled" && Array.isArray(ordRes.value)) setOpenOrders(ordRes.value);
+      } catch {}
+    })();
+  }, [mounted]);
 
   useEffect(() => {
     if (!activeBracketForPanel) return;
@@ -261,8 +244,6 @@ export default function TradePage() {
           return [...wsOnly, ...dbTweets].sort((a, b) => b.ts - a.ts).slice(0, 50);
         });
       }
-
-      await refreshWallet();
     };
 
     fetchOrderbooks();
@@ -650,35 +631,6 @@ export default function TradePage() {
                 initialAction={tradeAction}
                 initialAmount={tradeAmount}
                 onOutcomeChange={setTradeOutcome}
-                onOrderFilled={(trade) => {
-                  // Freeze this token from poll overwrites for 10s
-                  frozenTokensRef.current.set(trade.tokenId, Date.now() + 15000);
-                  // Tell Header to optimistically update cash/portfolio
-                  window.dispatchEvent(new CustomEvent("trade-executed", { detail: trade }));
-                  setPositionsData((prev) => {
-                    const existing = prev.find((p: any) => p.asset === trade.tokenId);
-                    if (trade.side === "BUY") {
-                      if (existing) {
-                        const newSize = parseFloat(existing.size || 0) + trade.size;
-                        return prev.map((p: any) => p.asset === trade.tokenId
-                          ? { ...p, size: String(newSize), currentValue: String(parseFloat(p.currentValue || 0) + trade.size * trade.price) }
-                          : p
-                        );
-                      }
-                      return [...prev, { asset: trade.tokenId, size: String(trade.size), curPrice: String(trade.price), currentValue: String(trade.size * trade.price) }];
-                    } else {
-                      if (existing) {
-                        const newSize = Math.max(0, parseFloat(existing.size || 0) - trade.size);
-                        if (newSize <= 0) return prev.filter((p: any) => p.asset !== trade.tokenId);
-                        return prev.map((p: any) => p.asset === trade.tokenId
-                          ? { ...p, size: String(newSize), currentValue: String(Math.max(0, parseFloat(p.currentValue || 0) - trade.size * trade.price)) }
-                          : p
-                        );
-                      }
-                      return prev;
-                    }
-                  });
-                }}
               />
             </div>
           </div>
