@@ -56,7 +56,8 @@ def init_db(conn) -> None:
                 ms_creds_read INT,
                 ms_python_start INT,
                 ms_order_post INT,
-                ms_cache_invalidate INT
+                ms_cache_invalidate INT,
+                ms_client_to_server INT
             )
         """)
     conn.commit()

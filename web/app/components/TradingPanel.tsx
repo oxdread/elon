@@ -123,7 +123,7 @@ export default function TradingPanel({
       const r = await fetch("/api/trade", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, _t0: Date.now() }),
       });
       const tResponse = performance.now();
       const d = await r.json();

@@ -38,12 +38,14 @@ export async function GET(req: Request) {
   .bar-creds { background: #3b82f6; }
   .bar-python { background: #fbbf24; }
   .bar-cache { background: #0ecb81; }
+  .bar-network { background: #f472b6; }
   .legend { display: flex; gap: 16px; margin-bottom: 12px; font-size: 11px; color: #808080; }
   .legend span { display: flex; align-items: center; gap: 4px; }
   .legend .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
 </style></head><body>
 <h1>Trade Log (last 50)</h1>
 <div class="legend">
+  <span><span class="dot" style="background:#f472b6"></span> Network (client→server)</span>
   <span><span class="dot" style="background:#3b82f6"></span> DB creds</span>
   <span><span class="dot" style="background:#fbbf24"></span> Python/order</span>
   <span><span class="dot" style="background:#0ecb81"></span> Cache invalidate</span>
@@ -69,6 +71,7 @@ ${rows.map((r: any) => {
   const credW = Math.max(1, Math.round((r.ms_creds_read || 0) / maxBar * 200));
   const pyW = Math.max(1, Math.round((r.ms_python_start || 0) / maxBar * 200));
   const cacheW = Math.max(1, Math.round((r.ms_cache_invalidate || 0) / maxBar * 200));
+  const netW = Math.max(1, Math.round((r.ms_client_to_server || 0) / maxBar * 200));
   return `<tr>
     <td class="time">${timeStr}</td>
     <td class="${(r.side || "").toLowerCase()}">${r.side || "—"}</td>
@@ -78,10 +81,11 @@ ${rows.map((r: any) => {
     <td class="${r.status || ""}">${r.status || "—"}</td>
     <td class="${totalClass}">${(totalMs / 1000).toFixed(1)}s</td>
     <td>
+      <span class="bar bar-network" style="width:${netW}px" title="network: ${r.ms_client_to_server || 0}ms"></span>
       <span class="bar bar-creds" style="width:${credW}px" title="creds: ${r.ms_creds_read}ms"></span>
       <span class="bar bar-python" style="width:${pyW}px" title="python: ${r.ms_python_start}ms"></span>
       <span class="bar bar-cache" style="width:${cacheW}px" title="cache: ${r.ms_cache_invalidate}ms"></span>
-      <span class="ms" style="font-size:10px; margin-left:4px">${r.ms_creds_read}+${r.ms_python_start}+${r.ms_cache_invalidate}ms</span>
+      <span class="ms" style="font-size:10px; margin-left:4px">net:${r.ms_client_to_server || 0} cred:${r.ms_creds_read} py:${r.ms_python_start} cache:${r.ms_cache_invalidate}ms</span>
     </td>
     <td class="err-msg" title="${(r.error || "").replace(/"/g, '&quot;')}">${r.error || ""}</td>
   </tr>`;

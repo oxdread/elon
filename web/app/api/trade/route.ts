@@ -12,7 +12,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { private_key, token_id, amount, price, size, side, order_type, funder } = body;
+    const { private_key, token_id, amount, price, size, side, order_type, funder, _t0 } = body;
+    const msClientToServer = _t0 ? Date.now() - _t0 : 0;
 
     if (!private_key || !token_id || !side) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -93,8 +94,8 @@ print(json.dumps(r))
     // Log to trade_log
     try {
       await query(
-        `INSERT INTO trade_log (ts, side, order_type, token_id, price, size, status, error, ms_total, ms_creds_read, ms_python_start, ms_order_post, ms_cache_invalidate)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        `INSERT INTO trade_log (ts, side, order_type, token_id, price, size, status, error, ms_total, ms_creds_read, ms_python_start, ms_order_post, ms_cache_invalidate, ms_client_to_server)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
         [
           Math.floor(Date.now() / 1000),
           side, order_type || "market",
@@ -103,6 +104,7 @@ print(json.dumps(r))
           parsed.status || "error",
           parsed.error || null,
           msTotal, msCreds, msPython, msPython, msCache,
+          msClientToServer,
         ]
       );
     } catch {}
