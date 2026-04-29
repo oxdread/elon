@@ -77,19 +77,30 @@ export async function POST(req: NextRequest) {
       if (cached && isFresh(cached.updated_at)) {
         return NextResponse.json(cached.positions);
       }
-      const pyCode = `
-import json, sys
-sys.path.insert(0, "${CWD}")
-from collector.trading import get_positions
-print(json.dumps(get_positions("${funder}")))
-`;
-      const result = JSON.parse(await runPython(pyCode));
-      let pv = 0;
-      if (Array.isArray(result)) {
-        for (const p of result) pv += parseFloat(p.currentValue || 0);
+      // Fetch directly from Polymarket data-api (no Python needed)
+      try {
+        const allPositions: unknown[] = [];
+        let offset = 0;
+        while (true) {
+          const r = await fetch(
+            `https://data-api.polymarket.com/positions?user=${funder}&sizeThreshold=0&limit=200&offset=${offset}`,
+            { cache: "no-store" }
+          );
+          if (!r.ok) break;
+          const batch = await r.json();
+          if (!batch || !Array.isArray(batch) || batch.length === 0) break;
+          allPositions.push(...batch);
+          if (batch.length < 200) break;
+          offset += 200;
+        }
+        const filtered = allPositions.filter((p: any) => parseFloat(p.size || 0) > 0);
+        let pv = 0;
+        for (const p of filtered as any[]) pv += parseFloat(p.currentValue || 0);
+        await upsertWalletCache(funder, { positions: filtered, portfolio_value: pv });
+        return NextResponse.json(filtered);
+      } catch (e) {
+        return NextResponse.json([{ error: String(e) }]);
       }
-      await upsertWalletCache(funder, { positions: result, portfolio_value: pv });
-      return NextResponse.json(result);
     }
 
     if (action === "balance") {
