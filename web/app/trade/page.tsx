@@ -68,11 +68,7 @@ export default function TradePage() {
     setMounted(true);
     setNow(Math.floor(Date.now() / 1000));
     const id = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
-    // Keep trade route warm — ping every 30s so it never cold-starts
-    const warmup = () => fetch("/api/trade", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
-    warmup();
-    const warmId = setInterval(warmup, 30000);
-    return () => { clearInterval(id); clearInterval(warmId); };
+    return () => clearInterval(id);
   }, []);
 
   // WebSocket: instant tweet notifications
@@ -175,7 +171,7 @@ export default function TradePage() {
       } catch {}
     };
     tick();
-    const id = setInterval(tick, 2000);
+    const id = setInterval(tick, 5000);
     return () => clearInterval(id);
   }, [selectedEvent]);
 
@@ -254,8 +250,8 @@ export default function TradePage() {
 
     fetchOrderbooks();
     fetchRest();
-    const obId = setInterval(fetchOrderbooks, 1000);
-    const restId = setInterval(fetchRest, 1000);
+    const obId = setInterval(fetchOrderbooks, 3000);
+    const restId = setInterval(fetchRest, 5000);
     return () => { clearInterval(obId); clearInterval(restId); };
   }, [activeBracketForPanel?.id, activeBracketForPanel?.yes_token_id]);
 
