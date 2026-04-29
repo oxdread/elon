@@ -176,24 +176,26 @@ export default function TradePage() {
     return () => clearInterval(id);
   }, [selectedEvent]);
 
-  const fetchHistory = useCallback(async () => {
-    if (!selectedEvent) return;
+  const fetchHistory = useCallback(async (bracketId?: string) => {
+    const bid = bracketId || selectedBracket;
+    if (!bid) return;
     setHistoryLoading(true);
     try {
       const from24h = Math.floor(Date.now() / 1000) - 86400;
-      const r = await fetch(`/api/history?event_id=${selectedEvent}&from=${from24h}&top=5`, { cache: "no-store" });
+      const r = await fetch(`/api/history?bracket_id=${bid}&from=${from24h}`, { cache: "no-store" });
       const d = await r.json();
       if (!d.error) setHistory(d.series ?? []);
     } catch {}
     setHistoryLoading(false);
-  }, [selectedEvent]);
+  }, [selectedBracket]);
 
-  // Fetch history once on event change, then refresh every 5 min (not every 60s)
+  // Fetch history when selected bracket changes, refresh every 5 min
   useEffect(() => {
+    if (!selectedBracket) return;
     fetchHistory();
     const id = setInterval(fetchHistory, 300000);
     return () => clearInterval(id);
-  }, [fetchHistory]);
+  }, [selectedBracket]);
 
   // Pre-fetch bottom panel data for all tabs in background
   const activeBracketForPanel = selectedBracket
@@ -336,19 +338,8 @@ export default function TradePage() {
 
     const noSelection = !selectedBracket;
 
-    // When no bracket selected, only show top 5 by latest mid price
-    let seriesToRender = allHistory;
-    if (noSelection && allHistory.length > 5) {
-      const withLatestMid = allHistory.map((h) => {
-        const lastPt = [...h.points].reverse().find((p) => p.mid != null);
-        return { ...h, latestMid: lastPt?.mid ?? 0 };
-      });
-      withLatestMid.sort((a, b) => b.latestMid - a.latestMid);
-      const topIds = new Set(withLatestMid.slice(0, 5).map((s) => s.bracket));
-      seriesToRender = allHistory.filter((h) => topIds.has(h.bracket));
-    } else if (!noSelection) {
-      seriesToRender = allHistory.filter((h) => h.bracket === selectedBracket);
-    }
+    // Always show only the selected bracket
+    let seriesToRender = noSelection ? [] : allHistory.filter((h) => h.bracket === selectedBracket);
 
     for (const h of seriesToRender) {
       const idx = brackets.findIndex((b) => b.id === h.bracket);
@@ -450,36 +441,23 @@ export default function TradePage() {
         series.setData(points);
       };
 
-      if (isSelected) {
-        createSeries({
-          lineColor: "#3b82f6",
-          topColor: "rgba(59, 130, 246, 0.08)",
-          bottomColor: "rgba(59, 130, 246, 0.0)",
-          lineWidth: 2,
-          lineType: LineType.Simple,
-          crosshairMarkerVisible: true,
-          crosshairMarkerRadius: 5,
-          crosshairMarkerBorderColor: "#3b82f6",
-          crosshairMarkerBorderWidth: 2,
-          crosshairMarkerBackgroundColor: "#0d0d0d",
-          priceFormat: { type: "custom", formatter: (p: number) => (p * 100).toFixed(1) + "%" },
-          lastValueVisible: true,
-          priceLineVisible: false,
-          title: label,
-        }, "area");
-      } else {
-        createSeries({
-          color: COLORS[idx % COLORS.length],
-          lineWidth: 1,
-          lineType: LineType.Simple,
-          crosshairMarkerVisible: true,
-          crosshairMarkerRadius: 3,
-          priceFormat: { type: "custom", formatter: (p: number) => (p * 100).toFixed(1) + "%" },
-          lastValueVisible: true,
-          priceLineVisible: false,
-          title: label,
-        }, "line");
-      }
+      // Always render as area (single bracket view)
+      createSeries({
+        lineColor: "#3b82f6",
+        topColor: "rgba(59, 130, 246, 0.08)",
+        bottomColor: "rgba(59, 130, 246, 0.0)",
+        lineWidth: 2,
+        lineType: LineType.Simple,
+        crosshairMarkerVisible: true,
+        crosshairMarkerRadius: 5,
+        crosshairMarkerBorderColor: "#3b82f6",
+        crosshairMarkerBorderWidth: 2,
+        crosshairMarkerBackgroundColor: "#0d0d0d",
+        priceFormat: { type: "custom", formatter: (p: number) => (p * 100).toFixed(1) + "%" },
+        lastValueVisible: true,
+        priceLineVisible: false,
+        title: label,
+      }, "area");
     }
 
     if (bracketOrEventChanged) {
@@ -496,6 +474,36 @@ export default function TradePage() {
       prevEventRef.current = selectedEvent;
     }
   }, [allHistory, selectedBracket, brackets, selectedEvent]);
+
+  // Auto-select default bracket: nearest bracket with shares, or active bracket
+  useEffect(() => {
+    if (selectedBracket || !selectedEvent) return;
+    const eventBrackets = allBrackets.filter((b) => b.event_id === selectedEvent);
+    if (eventBrackets.length === 0) return;
+    const currentCount = tweetCounts[selectedEvent] ?? 0;
+
+    // 1. Find nearest bracket where user has shares
+    if (positionsData.length > 0) {
+      const tokenIds = new Set(positionsData.map((p) => p.asset));
+      const withShares = eventBrackets.filter((b) => tokenIds.has(b.yes_token_id) || tokenIds.has(b.no_token_id));
+      if (withShares.length > 0) {
+        // Pick the one closest to current tweet count
+        withShares.sort((a, b) => Math.abs(a.lower_bound - currentCount) - Math.abs(b.lower_bound - currentCount));
+        setSelectedBracket(withShares[0].id);
+        return;
+      }
+    }
+
+    // 2. Fall back to active bracket
+    const active = eventBrackets.find((b) => currentCount >= b.lower_bound && currentCount <= b.upper_bound);
+    if (active) {
+      setSelectedBracket(active.id);
+      return;
+    }
+
+    // 3. Fall back to first bracket
+    setSelectedBracket(eventBrackets[0].id);
+  }, [selectedEvent, allBrackets, positionsData, tweetCounts, selectedBracket]);
 
   if (!mounted) return <div className="p-4 text-[#808080]">Loading...</div>;
 
@@ -571,17 +579,8 @@ export default function TradePage() {
                   <div key={b.id}
                     className={`rounded-lg px-3 py-2 cursor-pointer transition-colors
                       ${isSelected ? "bg-[#1a1a1a] border border-[#3b82f6]/30" : "bg-[#111111] border border-[#1a1a1a]/50 hover:bg-[#151515]"}`}
-                    onClick={async () => {
-                      const newSel = isSelected ? null : b.id;
-                      setSelectedBracket(newSel);
-                      if (newSel && !history.some((h) => h.bracket === newSel)) {
-                        const from24h = Math.floor(Date.now() / 1000) - 86400;
-                        try {
-                          const r = await fetch(`/api/history?bracket_id=${newSel}&from=${from24h}`, { cache: "no-store" });
-                          const d = await r.json();
-                          if (!d.error && d.series) setHistory((prev) => [...prev, ...d.series]);
-                        } catch {}
-                      }
+                    onClick={() => {
+                      if (!isSelected) setSelectedBracket(b.id);
                     }}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
@@ -634,23 +633,17 @@ export default function TradePage() {
                 ].map((tf) => (
                   <button key={tf.label} onClick={async () => {
                     const chart = chartRef.current;
-                    if (!chart) return;
+                    if (!chart || !selectedBracket) return;
                     if (tf.seconds === 0) {
-                      // Fetch ALL history
-                      if (selectedEvent) {
-                        const r = await fetch(`/api/history?event_id=${selectedEvent}`, { cache: "no-store" });
-                        const d = await r.json();
-                        if (!d.error) setHistory(d.series ?? []);
-                      }
+                      const r = await fetch(`/api/history?bracket_id=${selectedBracket}`, { cache: "no-store" });
+                      const d = await r.json();
+                      if (!d.error) setHistory(d.series ?? []);
                       chart.timeScale().fitContent();
                     } else {
-                      // Fetch only the needed range
                       const n = Math.floor(Date.now() / 1000);
-                      if (selectedEvent) {
-                        const r = await fetch(`/api/history?event_id=${selectedEvent}&from=${n - tf.seconds}&top=5`, { cache: "no-store" });
-                        const d = await r.json();
-                        if (!d.error) setHistory(d.series ?? []);
-                      }
+                      const r = await fetch(`/api/history?bracket_id=${selectedBracket}&from=${n - tf.seconds}`, { cache: "no-store" });
+                      const d = await r.json();
+                      if (!d.error) setHistory(d.series ?? []);
                       try { chart.timeScale().setVisibleRange({
                         from: (n - tf.seconds) as unknown as import("lightweight-charts").UTCTimestamp,
                         to: n as unknown as import("lightweight-charts").UTCTimestamp,
