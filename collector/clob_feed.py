@@ -265,6 +265,15 @@ async def _run_once(token_ids: list[str], changed_event: asyncio.Event) -> None:
                                         _books[tid]["asks"].pop(price, None)
                                     else:
                                         _books[tid]["asks"][price] = size
+                                # Clean crossed orders: remove bids >= best_ask and asks <= best_bid
+                                if best_bid is not None and best_ask is not None:
+                                    try:
+                                        bb_f = float(best_bid)
+                                        ba_f = float(best_ask)
+                                        _books[tid]["bids"] = {p: s for p, s in _books[tid]["bids"].items() if float(p) <= bb_f}
+                                        _books[tid]["asks"] = {p: s for p, s in _books[tid]["asks"].items() if float(p) >= ba_f}
+                                    except (TypeError, ValueError):
+                                        pass
 
                 elif isinstance(data, dict) and data.get("event_type") == "last_trade_price":
                     tid = data.get("asset_id")
