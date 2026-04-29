@@ -68,7 +68,11 @@ export default function TradePage() {
     setMounted(true);
     setNow(Math.floor(Date.now() / 1000));
     const id = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
-    return () => clearInterval(id);
+    // Keep trade route warm — ping every 30s so it never cold-starts
+    const warmup = () => fetch("/api/trade", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
+    warmup();
+    const warmId = setInterval(warmup, 30000);
+    return () => { clearInterval(id); clearInterval(warmId); };
   }, []);
 
   // WebSocket: instant tweet notifications
