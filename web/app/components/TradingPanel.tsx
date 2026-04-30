@@ -25,6 +25,7 @@ export default function TradingPanel({
   const [price, setPrice] = useState("");
   const [loading, setLoading] = useState(false);
   const pendingToastRef = useRef<string | null>(null);
+  const orderStartTimeRef = useRef<number>(0);
 
   // Sync from orderbook click
   useEffect(() => {
@@ -69,7 +70,8 @@ export default function TradingPanel({
 
     const onFill = () => {
       if (pendingToastRef.current) {
-        toast.success("Filled!", { id: pendingToastRef.current, duration: 3000, style: { ...toastStyle, color: "#0ecb81" } });
+        const elapsed = ((performance.now() - orderStartTimeRef.current) / 1000).toFixed(1);
+        toast.success(`Filled! (${elapsed}s from click)`, { id: pendingToastRef.current, duration: 3000, style: { ...toastStyle, color: "#0ecb81" } });
         pendingToastRef.current = null;
         setLoading(false);
       }
@@ -77,12 +79,13 @@ export default function TradingPanel({
     const onOrderEvent = (e: Event) => {
       if (!pendingToastRef.current) return;
       const detail = (e as CustomEvent).detail;
+      const elapsed = ((performance.now() - orderStartTimeRef.current) / 1000).toFixed(1);
       if (detail?.type === "PLACEMENT") {
-        toast.success("Limit order placed", { id: pendingToastRef.current, duration: 3000, style: { ...toastStyle, color: "#3b82f6" } });
+        toast.success(`Limit order placed (${elapsed}s)`, { id: pendingToastRef.current, duration: 3000, style: { ...toastStyle, color: "#3b82f6" } });
         pendingToastRef.current = null;
         setLoading(false);
       } else if (detail?.type === "CANCELLATION") {
-        toast.error("Order cancelled", { id: pendingToastRef.current, duration: 3000, style: { ...toastStyle, color: "#f6465d" } });
+        toast.error(`Order cancelled (${elapsed}s)`, { id: pendingToastRef.current, duration: 3000, style: { ...toastStyle, color: "#f6465d" } });
         pendingToastRef.current = null;
         setLoading(false);
       }
@@ -135,6 +138,7 @@ export default function TradingPanel({
     const key = localStorage.getItem("poly_private_key")!;
     const funder = localStorage.getItem("poly_funder") || "";
     setLoading(true);
+    orderStartTimeRef.current = performance.now();
     const toastStyle = { background: "#141414", color: "#e5e5e5", border: "1px solid #252525", borderRadius: "12px" };
     const toastId = toast.loading("Placing order...", { position: "bottom-right", style: toastStyle });
     pendingToastRef.current = toastId;
