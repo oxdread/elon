@@ -696,7 +696,7 @@ export default function TradePage() {
               <div className="flex gap-1 px-2 py-1.5 border-b border-[#1a1a1a] shrink-0">
                 <button onClick={() => setLeftTab("tweets")}
                   className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors ${leftTab === "tweets" ? "text-[#e5e5e5] bg-[#1a1a1a]" : "text-[#555555] hover:text-[#808080]"}`}>
-                  Tweets {tweetLog.length > 0 && <span className="text-[#3b82f6] ml-0.5">{tweetLog.length}</span>}
+                  Tweets
                 </button>
                 <button onClick={() => { setLeftTab("other"); setBottomTab("comments"); }}
                   className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors ${leftTab !== "tweets" && bottomTab === "comments" ? "text-[#e5e5e5] bg-[#1a1a1a]" : "text-[#555555] hover:text-[#808080]"}`}>Comments</button>
@@ -708,26 +708,28 @@ export default function TradePage() {
                   tweetLog.length === 0 ? (
                     <PanelShimmer rows={4} />
                   ) : (
-                    tweetLog.map((t, i) => {
+                    <div className="p-1.5 flex flex-col gap-1">
+                    {tweetLog.map((t, i) => {
                       const age = Math.floor(Date.now() / 1000) - t.ts;
                       const ageStr = age < 60 ? `${age}s ago` : age < 3600 ? `${Math.floor(age / 60)}m ago` : age < 86400 ? `${Math.floor(age / 3600)}h ago` : `${Math.floor(age / 86400)}d ago`;
                       return (
-                        <div key={t.id} className="px-3 py-2 border-b border-[#1a1a1a]/40 hover:bg-[#131313] transition-colors">
+                        <div key={t.id} className="px-3 py-2.5 rounded-lg bg-[#111111] border border-[#1a1a1a]/50 hover:bg-[#141414] transition-colors">
                           <div className="flex gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-[#1a1a1a] shrink-0 overflow-hidden">
+                            <div className="w-8 h-8 rounded-full bg-[#1a1a1a] shrink-0 overflow-hidden">
                               <img src="/elon.jpg" alt="Elon" className="w-full h-full object-cover" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-0.5">
-                                <span className="text-[11px] font-bold text-[#e5e5e5]">Elon Musk</span>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-bold text-[#e5e5e5]">Elon Musk</span>
                                 <span className="text-[10px] text-[#555555] ml-auto">{ageStr}</span>
                               </div>
-                              <p className="text-[11px] text-[#b0b0b0] leading-relaxed break-words">{t.text}</p>
+                              <p className="text-xs text-[#b0b0b0] leading-relaxed break-words">{t.text}</p>
                             </div>
                           </div>
                         </div>
                       );
-                    })
+                    })}
+                    </div>
                   )
                 ) : bottomTab === "comments" ? (
                   <Comments initialData={commentsData as any} />
