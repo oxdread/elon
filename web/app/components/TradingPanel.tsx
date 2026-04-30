@@ -175,23 +175,23 @@ export default function TradingPanel({
   }
 
   return (
-    <div className="flex flex-col h-full p-3 gap-2">
+    <div className="flex flex-col h-full p-3 gap-3">
       {/* Bracket label with image */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5">
         <div className="w-9 h-9 rounded-lg bg-[#1a1a1a] shrink-0 overflow-hidden">
-          <img src="/elon.jpg" alt="" className="w-full h-full object-cover" />
+          <img src="/elon-red.jpg" alt="" className="w-full h-full object-cover" />
         </div>
         <span className="text-base font-bold text-[#e5e5e5]">{bracket.label}</span>
       </div>
 
       {/* Buy / Sell tabs */}
-      <div className="flex gap-3">
+      <div className="flex border-b border-[#1a1a1a]">
         <button onClick={() => setAction("buy")}
-          className={`text-sm font-bold pb-0.5 transition-colors ${
+          className={`px-4 pb-2 text-sm font-bold transition-colors ${
             isBuy ? "text-[#e5e5e5] border-b-2 border-[#e5e5e5]" : "text-[#555555] hover:text-[#808080]"
           }`}>Buy</button>
         <button onClick={() => setAction("sell")}
-          className={`text-sm font-bold pb-0.5 transition-colors ${
+          className={`px-4 pb-2 text-sm font-bold transition-colors ${
             !isBuy ? "text-[#e5e5e5] border-b-2 border-[#e5e5e5]" : "text-[#555555] hover:text-[#808080]"
           }`}>Sell</button>
       </div>
