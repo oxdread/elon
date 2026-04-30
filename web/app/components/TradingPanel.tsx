@@ -205,8 +205,8 @@ export default function TradingPanel({
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto">
         {/* Bracket label */}
-        <div className="px-3 pt-3 pb-2">
-          <span className="text-sm font-bold text-[#e5e5e5]">{bracket.label}</span>
+        <div className="px-3 pt-3 pb-2 border-b border-[#1a1a1a]/40 mb-1">
+          <span className="text-base font-bold text-[#e5e5e5]">{bracket.label}</span>
         </div>
 
         {/* Buy / Sell tabs */}

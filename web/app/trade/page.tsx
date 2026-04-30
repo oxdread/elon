@@ -48,7 +48,7 @@ export default function TradePage() {
   const [tradesData, setTradesData] = useState<unknown[] | null>(null);
   const [commentsData, setCommentsData] = useState<unknown[] | null>(null);
   const [tweetLog, setTweetLog] = useState<{ id: string; ts: number; text: string }[]>([]);
-  const [leftTab, setLeftTab] = useState<"tweets" | "comments">("tweets");
+  const [leftTab, setLeftTab] = useState<"tweets" | "other">("tweets");
   const [positionsData, setPositionsData] = useState<any[]>([]);
   const [openOrders, setOpenOrders] = useState<any[]>([]);
   const [posTab, setPosTab] = useState<"positions" | "orders" | "history">("positions");
@@ -689,64 +689,61 @@ export default function TradePage() {
             </div>
           </div>
 
-          {/* Bottom row: Elon Tweet | Comments/Trades | Position/Orders */}
-          <div className="h-52 flex gap-2 shrink-0">
-            {/* Elon Tweet */}
+          {/* Bottom row: Tweets/Comments/Trades | Position/Orders/History */}
+          <div className="h-60 flex gap-2 shrink-0">
+            {/* Elon Tweets / Comments / Trades */}
             <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden flex flex-col">
-              <div className="px-3 py-1.5 border-b border-[#1a1a1a] shrink-0 flex items-center gap-2">
-                <span className="text-[10px] text-[#808080] uppercase tracking-wider">Elon Tweets</span>
-                <span className="text-[10px] text-[#3b82f6] font-bold ml-auto">{tweetLog.length}</span>
+              <div className="flex border-b border-[#1a1a1a] shrink-0">
+                <button onClick={() => setLeftTab("tweets")}
+                  className={`flex-1 py-1.5 text-[10px] font-bold uppercase ${leftTab === "tweets" ? "text-[#3b82f6] border-b-2 border-[#3b82f6]" : "text-[#555555]"}`}>
+                  Tweets {tweetLog.length > 0 && <span className="text-[#3b82f6] ml-1">{tweetLog.length}</span>}
+                </button>
+                <button onClick={() => setBottomTab("comments")}
+                  className={`flex-1 py-1.5 text-[10px] font-bold uppercase ${leftTab !== "tweets" && bottomTab === "comments" ? "text-[#3b82f6] border-b-2 border-[#3b82f6]" : "text-[#555555]"}`}
+                  onClickCapture={() => setLeftTab("other")}>Comments</button>
+                <button onClick={() => setBottomTab("trades")}
+                  className={`flex-1 py-1.5 text-[10px] font-bold uppercase ${leftTab !== "tweets" && bottomTab === "trades" ? "text-[#3b82f6] border-b-2 border-[#3b82f6]" : "text-[#555555]"}`}
+                  onClickCapture={() => setLeftTab("other")}>Trades</button>
               </div>
-              <div className="flex-1 overflow-y-auto">
-                {tweetLog.length === 0 ? (
-                  <PanelShimmer rows={4} />
-                ) : (
-                  tweetLog.map((t, i) => {
-                    const age = Math.floor(Date.now() / 1000) - t.ts;
-                    const ageStr = age < 60 ? `${age}s ago` : age < 3600 ? `${Math.floor(age / 60)}m ago` : age < 86400 ? `${Math.floor(age / 3600)}h ago` : `${Math.floor(age / 86400)}d ago`;
-                    return (
-                      <div key={t.id} className="px-3 py-2 border-b border-[#1a1a1a]/40 hover:bg-[#131313] transition-colors">
-                        <div className="flex gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-[#1a1a1a] shrink-0 overflow-hidden">
-                            <img src="/elon.jpg" alt="Elon" className="w-full h-full object-cover" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <span className="text-xs font-bold text-[#e5e5e5]">Elon Musk</span>
-                              <span className="text-[10px] text-[#555555]">@elonmusk</span>
-                              <span className="text-[10px] text-[#555555] ml-auto">{ageStr}</span>
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {leftTab === "tweets" ? (
+                  tweetLog.length === 0 ? (
+                    <PanelShimmer rows={4} />
+                  ) : (
+                    tweetLog.map((t, i) => {
+                      const age = Math.floor(Date.now() / 1000) - t.ts;
+                      const ageStr = age < 60 ? `${age}s ago` : age < 3600 ? `${Math.floor(age / 60)}m ago` : age < 86400 ? `${Math.floor(age / 3600)}h ago` : `${Math.floor(age / 86400)}d ago`;
+                      return (
+                        <div key={t.id} className="px-3 py-2 border-b border-[#1a1a1a]/40 hover:bg-[#131313] transition-colors">
+                          <div className="flex gap-2.5">
+                            <div className="w-7 h-7 rounded-full bg-[#1a1a1a] shrink-0 overflow-hidden">
+                              <img src="/elon.jpg" alt="Elon" className="w-full h-full object-cover" />
                             </div>
-                            <p className="text-xs text-[#b0b0b0] leading-relaxed break-words">{t.text}</p>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <span className="text-[11px] font-bold text-[#e5e5e5]">Elon Musk</span>
+                                <span className="text-[10px] text-[#555555] ml-auto">{ageStr}</span>
+                              </div>
+                              <p className="text-[11px] text-[#b0b0b0] leading-relaxed break-words">{t.text}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })
+                      );
+                    })
+                  )
+                ) : bottomTab === "comments" ? (
+                  <Comments initialData={commentsData as any} />
+                ) : (
+                  (() => {
+                    const bracket = selectedBracketData ?? brackets[0];
+                    if (!bracket) return <div className="p-3 text-[#555555] text-xs">—</div>;
+                    return <TradeHistory conditionId={bracket.id} label={bracket.label} initialData={tradesData as any} />;
+                  })()
                 )}
               </div>
             </div>
 
-            {/* Poly Comments or Trades */}
-            <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden flex flex-col">
-              <div className="flex border-b border-[#1a1a1a] shrink-0">
-                <button onClick={() => setBottomTab("comments")}
-                  className={`flex-1 py-1.5 text-[10px] font-bold uppercase ${bottomTab === "comments" ? "text-[#3b82f6] border-b-2 border-[#3b82f6]" : "text-[#555555]"}`}>Comments</button>
-                <button onClick={() => setBottomTab("trades")}
-                  className={`flex-1 py-1.5 text-[10px] font-bold uppercase ${bottomTab === "trades" ? "text-[#3b82f6] border-b-2 border-[#3b82f6]" : "text-[#555555]"}`}>Trades</button>
-              </div>
-              <div className="flex-1 min-h-0">
-                {bottomTab === "comments"
-                  ? <Comments initialData={commentsData as any} />
-                  : (() => {
-                      const bracket = selectedBracketData ?? brackets[0];
-                      if (!bracket) return <div className="p-3 text-[#555555] text-xs">—</div>;
-                      return <TradeHistory conditionId={bracket.id} label={bracket.label} initialData={tradesData as any} />;
-                    })()
-                }
-              </div>
-            </div>
-
-            {/* Position / Order History / Open Orders */}
+            {/* Position / Open Orders / History */}
             <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden flex flex-col">
               <div className="flex border-b border-[#1a1a1a] shrink-0">
                 {(["positions", "orders", "history"] as const).map((t) => (
@@ -765,18 +762,19 @@ export default function TradePage() {
                     return active.length === 0 ? (
                       <div className="p-3 text-[#555555] text-xs">No active positions</div>
                     ) : (
-                      active.map((p, i) => {
+                      <div className="p-1.5 flex flex-col gap-1">
+                      {active.map((p, i) => {
                       const bracket = allBrackets.find((b) => b.id === p.conditionId || b.yes_token_id === p.asset || b.no_token_id === p.asset);
                       const label = bracket?.label || p.title?.replace(/^Will Elon Musk post\s*/i, "").replace(/\s*twee?ts?.*$/i, "").trim() || "—";
                       const outcome = p.outcome || (bracket ? (bracket.yes_token_id === p.asset ? "Yes" : "No") : "");
                       return (
-                      <div key={i} className="flex items-center px-3 py-1.5 border-b border-[#1a1a1a]/40 text-[11px]">
+                      <div key={i} className="flex items-center px-3 py-2 rounded-lg bg-[#111111] border border-[#1a1a1a]/50 text-[11px]">
                         <div className="flex-1 min-w-0">
-                          <span className="text-[#e5e5e5] font-medium">{label}</span>
-                          <span className={`ml-1.5 text-[10px] font-medium ${outcome === "Yes" ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{outcome}</span>
+                          <div className="text-[#e5e5e5] font-medium">{label}</div>
+                          <span className={`text-[10px] font-medium ${outcome === "Yes" ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{outcome}</span>
                         </div>
-                        <div className="text-right shrink-0 w-16">
-                          <div className="text-[#e5e5e5] tabular-nums">{parseFloat(p.size || 0).toFixed(1)}</div>
+                        <div className="text-right shrink-0 w-14">
+                          <div className="text-[#e5e5e5] tabular-nums font-medium">{parseFloat(p.size || 0).toFixed(1)}</div>
                           <div className="text-[9px] text-[#555555]">shares</div>
                         </div>
                         <div className="text-right shrink-0 w-16">
@@ -788,23 +786,24 @@ export default function TradePage() {
                           </div>
                         </div>
                       </div>
-                    )})
+                    )})}
+                    </div>
                     );
                   })()
                 ) : posTab === "orders" ? (
                   openOrders.length === 0 ? (
                     <div className="p-3 text-[#555555] text-xs">No open orders</div>
                   ) : (
-                    openOrders.map((o, i) => {
+                    <div className="p-1.5 flex flex-col gap-1">
+                    {openOrders.map((o, i) => {
                       const bracket = allBrackets.find((b) => b.yes_token_id === o.asset_id || b.no_token_id === o.asset_id);
                       const priceCents = parseFloat(o.price || 0) * 100;
                       const origSize = parseFloat(o.original_size || o.size || 0);
-                      const filledSize = origSize - parseFloat(o.size_matched || 0);
                       const ts = parseInt(o.timestamp || "0");
                       const age = ts ? Math.floor(Date.now() / 1000) - Math.floor(ts / 1000) : 0;
                       const ageStr = age < 60 ? `${age}s` : age < 3600 ? `${Math.floor(age / 60)}m` : `${Math.floor(age / 3600)}h`;
                       return (
-                        <div key={o.id || i} className="flex items-center px-3 py-2 border-b border-[#1a1a1a]/40 text-[11px] gap-2">
+                        <div key={o.id || i} className="flex items-center px-3 py-2 rounded-lg bg-[#111111] border border-[#1a1a1a]/50 text-[11px] gap-2">
                           <span className={`font-bold w-8 ${o.side === "BUY" ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{o.side}</span>
                           <div className="flex-1 min-w-0">
                             <div className="text-[#e5e5e5] font-medium truncate">{bracket?.label || "—"}</div>
@@ -814,7 +813,7 @@ export default function TradePage() {
                           </div>
                           <span className="text-[#555555] text-[10px] shrink-0">{ageStr}</span>
                           <button
-                            className="text-[#f6465d] hover:text-red-400 text-[10px] font-bold px-1.5 py-0.5 rounded hover:bg-[#f6465d]/10 transition-colors shrink-0"
+                            className="text-[#f6465d] hover:text-red-400 text-[10px] font-bold px-2 py-1 rounded-md hover:bg-[#f6465d]/10 border border-[#f6465d]/20 transition-colors shrink-0"
                             onClick={async (e) => {
                               e.stopPropagation();
                               const key = localStorage.getItem("poly_private_key");
@@ -837,11 +836,11 @@ export default function TradePage() {
                           >Cancel</button>
                         </div>
                       );
-                    })
+                    })}
+                    </div>
                   )
                 ) : (
                   (() => {
-                    // Fetch trade history from pre-fetched wallet data
                     const key = typeof window !== "undefined" ? localStorage.getItem("poly_private_key") : null;
                     if (!key) return <div className="p-3 text-[#555555] text-xs">Import key to view history</div>;
                     return <TradeHistoryPanel privateKey={key} />;
