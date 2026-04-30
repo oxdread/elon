@@ -759,16 +759,18 @@ export default function TradePage() {
                 {posTab === "positions" ? (
                   (() => {
                     const active = positionsData.filter((p) => {
-                      const cv = parseFloat(p.currentValue || 0);
-                      return cv > 0;
+                      return parseFloat(p.size || 0) > 0;
                     });
                     return active.length === 0 ? (
                       <div className="p-3 text-[#555555] text-xs">No active positions</div>
                     ) : (
-                      active.map((p, i) => (
+                      active.map((p, i) => {
+                      const bracket = allBrackets.find((b) => b.id === p.conditionId || b.yes_token_id === p.asset || b.no_token_id === p.asset);
+                      const displayTitle = p.title?.slice(0, 30) || bracket?.label || p.conditionId?.slice(0, 10) || "—";
+                      return (
                       <div key={i} className="flex items-center px-3 py-1.5 border-b border-[#1a1a1a]/40 text-[11px]">
                         <div className="flex-1 min-w-0">
-                          <span className="text-[#e5e5e5] font-medium">{p.title?.slice(0, 30) || p.conditionId?.slice(0, 10) || "—"}</span>
+                          <span className="text-[#e5e5e5] font-medium">{displayTitle}</span>
                           <span className="ml-1 text-[#555555]">{p.outcome || ""}</span>
                         </div>
                         <div className="text-right shrink-0 w-16">
@@ -784,7 +786,7 @@ export default function TradePage() {
                           </div>
                         </div>
                       </div>
-                    ))
+                    )})
                     );
                   })()
                 ) : posTab === "orders" ? (

@@ -84,7 +84,7 @@ ${rows.map((r: any) => {
     <td>${r.size ? parseFloat(r.size).toFixed(1) : "—"}</td>
     <td class="${r.status || ""}">${r.status || "—"}</td>
     <td class="${totalClass}">${(totalMs / 1000).toFixed(1)}s</td>
-    <td class="${r.ms_ws_confirm ? (r.ms_ws_confirm > 5000 ? 'ms-bad' : r.ms_ws_confirm > 2000 ? 'ms-slow' : 'ms') : 'ms'}">${r.ms_ws_confirm ? (r.ms_ws_confirm / 1000).toFixed(1) + 's' : '—'}</td>
+    <td class="${r.ms_ws_confirm ? (r.ms_ws_confirm > 5000 ? 'ms-bad' : r.ms_ws_confirm > 2000 ? 'ms-slow' : 'ms') : 'ms'}">${r.ms_ws_confirm ? (r.ms_ws_confirm / 1000).toFixed(1) + 's' : '--'}</td>
     <td>
       <span class="bar bar-network" style="width:${netW}px" title="network: ${r.ms_client_to_server || 0}ms"></span>
       <span class="bar bar-creds" style="width:${credW}px" title="creds: ${r.ms_creds_read}ms"></span>
