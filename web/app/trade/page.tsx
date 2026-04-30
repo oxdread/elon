@@ -774,9 +774,17 @@ export default function TradePage() {
                           <span className="text-[#e5e5e5] font-medium">{label}</span>
                           <span className={`ml-1.5 text-[10px] font-medium ${outcome === "Yes" ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{outcome}</span>
                         </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-[#e5e5e5] tabular-nums font-medium">{parseFloat(p.size || 0).toFixed(0)}</span>
-                          <span className="text-[#555555] ml-1">shares</span>
+                        <div className="text-right shrink-0 w-16">
+                          <div className="text-[#e5e5e5] tabular-nums">{parseFloat(p.size || 0).toFixed(1)}</div>
+                          <div className="text-[9px] text-[#555555]">shares</div>
+                        </div>
+                        <div className="text-right shrink-0 w-16">
+                          <div className={`tabular-nums font-medium ${parseFloat(p.cashPnl || 0) >= 0 ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>
+                            ${parseFloat(p.cashPnl || 0).toFixed(2)}
+                          </div>
+                          <div className={`text-[9px] tabular-nums ${parseFloat(p.percentPnl || 0) >= 0 ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>
+                            {parseFloat(p.percentPnl || 0).toFixed(1)}%
+                          </div>
                         </div>
                       </div>
                     )})
