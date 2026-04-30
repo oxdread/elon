@@ -769,27 +769,27 @@ export default function TradePage() {
                       const outcome = p.outcome || (bracket ? (bracket.yes_token_id === p.asset ? "Yes" : "No") : "");
                       return (
                       <div key={i} className="px-3 py-2.5 rounded-lg bg-[#111111] border border-[#1a1a1a]/50">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-sm font-bold text-[#e5e5e5]">{label}</span>
-                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded ${outcome === "Yes" ? "text-[#0ecb81] bg-[#0ecb81]/10" : "text-[#f6465d] bg-[#f6465d]/10"}`}>{outcome}</span>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-[#e5e5e5]">{label}</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${outcome === "Yes" ? "text-[#0ecb81] bg-[#0ecb81]/10 border border-[#0ecb81]/20" : "text-[#f6465d] bg-[#f6465d]/10 border border-[#f6465d]/20"}`}>{outcome}</span>
+                          </div>
+                          <span className={`text-base tabular-nums font-bold ${parseFloat(p.cashPnl || 0) >= 0 ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>
+                            {parseFloat(p.cashPnl || 0) >= 0 ? "+" : ""}${parseFloat(p.cashPnl || 0).toFixed(2)}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-4 text-xs">
-                          <div>
-                            <span className="text-[#555555]">Shares </span>
-                            <span className="text-[#e5e5e5] tabular-nums font-bold">{parseFloat(p.size || 0).toFixed(1)}</span>
+                        <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-0.5 px-2 py-1 rounded-md bg-[#0d0d0d]">
+                            <span className="text-[10px] text-[#555555]">Qty</span>
+                            <span className="text-[11px] text-[#e5e5e5] tabular-nums font-bold ml-1">{parseFloat(p.size || 0).toFixed(1)}</span>
                           </div>
-                          <div>
-                            <span className="text-[#555555]">Avg </span>
-                            <span className="text-[#e5e5e5] tabular-nums font-medium">{(parseFloat(p.avgPrice || 0) * 100).toFixed(1)}¢</span>
+                          <div className="flex items-center gap-0.5 px-2 py-1 rounded-md bg-[#0d0d0d]">
+                            <span className="text-[10px] text-[#555555]">Avg</span>
+                            <span className="text-[11px] text-[#e5e5e5] tabular-nums ml-1">{(parseFloat(p.avgPrice || 0) * 100).toFixed(1)}¢</span>
                           </div>
-                          <div>
-                            <span className="text-[#555555]">Cur </span>
-                            <span className="text-[#e5e5e5] tabular-nums font-medium">{(parseFloat(p.curPrice || 0) * 100).toFixed(1)}¢</span>
-                          </div>
-                          <div className="ml-auto">
-                            <span className={`tabular-nums font-bold text-sm ${parseFloat(p.cashPnl || 0) >= 0 ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>
-                              ${parseFloat(p.cashPnl || 0).toFixed(2)}
-                            </span>
+                          <div className="flex items-center gap-0.5 px-2 py-1 rounded-md bg-[#0d0d0d]">
+                            <span className="text-[10px] text-[#555555]">Mark</span>
+                            <span className="text-[11px] text-[#e5e5e5] tabular-nums ml-1">{(parseFloat(p.curPrice || 0) * 100).toFixed(1)}¢</span>
                           </div>
                         </div>
                       </div>
