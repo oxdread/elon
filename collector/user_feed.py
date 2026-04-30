@@ -273,7 +273,16 @@ async def _run_once(creds: dict, condition_ids: list[str]) -> None:
                 elif event_type == "order":
                     order_type = data.get("type", "")
                     print(f"[user-ws] order {order_type}: {data.get('side')} {data.get('size')} @ {data.get('price')}")
-                    # Fetch and push full account state
+                    # Push order event to browser immediately
+                    _ws_push("order_update", {
+                        "type": order_type,
+                        "asset_id": data.get("asset_id"),
+                        "side": data.get("side"),
+                        "size": data.get("size"),
+                        "price": data.get("price"),
+                        "order_id": data.get("id"),
+                    })
+                    # Fetch full account in background for real data
                     await asyncio.get_event_loop().run_in_executor(None, lambda: _save_and_push(creds))
 
         finally:

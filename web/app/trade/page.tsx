@@ -170,7 +170,13 @@ export default function TradePage() {
                   return prev;
                 }
               });
+              // Notify TradingPanel toast
+              window.dispatchEvent(new Event("ws-trade-fill"));
             }
+          }
+          // User channel: order placement/cancellation
+          if (msg.type === "order_update" && msg.data) {
+            window.dispatchEvent(new CustomEvent("ws-order-event", { detail: msg.data }));
           }
           // User channel: full account update from WS (on CONFIRMED — real data)
           if (msg.type === "account_update" && msg.data) {
