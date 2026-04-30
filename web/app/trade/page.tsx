@@ -759,7 +759,7 @@ export default function TradePage() {
                 {posTab === "positions" ? (
                   (() => {
                     const active = positionsData.filter((p) => {
-                      return parseFloat(p.size || 0) > 0;
+                      return parseFloat(p.size || 0) > 0 && parseFloat(p.currentValue || 0) > 0;
                     });
                     return active.length === 0 ? (
                       <div className="p-3 text-[#555555] text-xs">No active positions</div>
