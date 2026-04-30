@@ -195,12 +195,12 @@ export default function TradePage() {
     ? allBrackets.find((b) => b.id === selectedBracket)
     : (selectedEvent ? allBrackets.find((b) => b.event_id === selectedEvent) : null);
 
-  // Initial wallet load (one-time, WS takes over after)
+  // Wallet: initial load + fallback poll every 10s (WS is primary, poll is safety net)
   useEffect(() => {
     const key = typeof window !== "undefined" ? localStorage.getItem("poly_private_key") : null;
     const funder = typeof window !== "undefined" ? localStorage.getItem("poly_funder") : null;
     if (!key || !funder) return;
-    (async () => {
+    const fetchWallet = async () => {
       try {
         const [posRes, ordRes] = await Promise.allSettled([
           fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -211,7 +211,10 @@ export default function TradePage() {
         if (posRes.status === "fulfilled" && Array.isArray(posRes.value)) setPositionsData(posRes.value);
         if (ordRes.status === "fulfilled" && Array.isArray(ordRes.value)) setOpenOrders(ordRes.value);
       } catch {}
-    })();
+    };
+    fetchWallet();
+    const id = setInterval(fetchWallet, 10000);
+    return () => clearInterval(id);
   }, [mounted]);
 
   useEffect(() => {

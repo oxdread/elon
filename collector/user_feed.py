@@ -130,8 +130,16 @@ def _fetch_full_account(creds: dict) -> dict:
             if len(batch) < 200:
                 break
             offset += 200
-        result["positions"] = [p for p in all_positions if float(p.get("size", 0)) > 0]
-        result["portfolio_value"] = sum(float(p.get("currentValue", 0)) for p in result["positions"])
+        filtered = [p for p in all_positions if float(p.get("size", 0)) > 0]
+        # Strip to essential fields only (full data is 200KB+, stripped is ~5KB)
+        result["positions"] = [
+            {"asset": p.get("asset"), "size": p.get("size"), "curPrice": p.get("curPrice"),
+             "currentValue": p.get("currentValue"), "cashPnl": p.get("cashPnl"),
+             "percentPnl": p.get("percentPnl"), "outcome": p.get("outcome"),
+             "title": p.get("title"), "conditionId": p.get("conditionId")}
+            for p in filtered
+        ]
+        result["portfolio_value"] = sum(float(p.get("currentValue", 0)) for p in filtered)
     except Exception as e:
         print(f"[user-ws] positions fetch error: {e}")
 
