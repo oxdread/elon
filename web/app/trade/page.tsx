@@ -135,7 +135,7 @@ export default function TradePage() {
           }
           // User channel: trade filled — apply instantly to positions
           if (msg.type === "trade_fill" && msg.data) {
-            const { asset_id, side, size, price } = msg.data;
+            const { asset_id, side, size, price, outcome: wsOutcome } = msg.data;
             if (asset_id && side && size) {
               const sz = parseFloat(size);
               const pr = parseFloat(price || 0);
@@ -154,9 +154,9 @@ export default function TradePage() {
                   return [...prev, {
                     asset: asset_id, size: String(sz), curPrice: String(pr),
                     currentValue: String(sz * pr),
-                    title: bracket?.label || "—",
+                    title: bracket?.label || "",
                     conditionId: bracket?.id,
-                    outcome: bracket?.yes_token_id === asset_id ? "Yes" : "No",
+                    outcome: wsOutcome || (bracket?.yes_token_id === asset_id ? "Yes" : "No"),
                   }];
                 } else {
                   if (existing) {

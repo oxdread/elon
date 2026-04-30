@@ -276,6 +276,7 @@ async def _run_once(creds: dict, condition_ids: list[str]) -> None:
                             "side": data.get("side"),
                             "size": data.get("size"),
                             "price": data.get("price"),
+                            "outcome": data.get("outcome"),
                         })
                     elif status == "CONFIRMED":
                         # Now Polymarket has updated — fetch real data
