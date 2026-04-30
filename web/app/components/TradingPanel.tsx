@@ -164,8 +164,11 @@ export default function TradingPanel({
       </div>
 
       {/* Content area — connected to active tab */}
-      <div className="flex flex-col flex-1 px-3 pb-3 pt-2 gap-2.5 bg-[#0d0d0d] border-x border-b border-[#1a1a1a] rounded-b-lg"
-        style={{ borderTop: isYes ? "none" : "none" }}>
+      <div className="flex flex-col px-3 pb-3 pt-2 gap-2.5 bg-[#0d0d0d] border-x border-b border-[#1a1a1a] rounded-b-lg"
+        style={{ background: isYes
+          ? "linear-gradient(180deg, #0d0d0d 0%, rgba(14,203,129,0.06) 50%, #0d0d0d 100%)"
+          : "linear-gradient(180deg, #0d0d0d 0%, rgba(246,70,93,0.06) 50%, #0d0d0d 100%)"
+        }}>
 
         {/* Shares owned */}
         {((isYes && yesShares > 0) || (!isYes && noShares > 0)) && (
