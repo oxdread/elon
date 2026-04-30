@@ -766,24 +766,17 @@ export default function TradePage() {
                     ) : (
                       active.map((p, i) => {
                       const bracket = allBrackets.find((b) => b.id === p.conditionId || b.yes_token_id === p.asset || b.no_token_id === p.asset);
-                      const displayTitle = p.title?.slice(0, 30) || bracket?.label || p.conditionId?.slice(0, 10) || "—";
+                      const label = bracket?.label || p.title?.replace(/^Will Elon Musk post\s*/i, "").replace(/\s*twee?ts?.*$/i, "").trim() || "—";
+                      const outcome = p.outcome || (bracket ? (bracket.yes_token_id === p.asset ? "Yes" : "No") : "");
                       return (
                       <div key={i} className="flex items-center px-3 py-1.5 border-b border-[#1a1a1a]/40 text-[11px]">
                         <div className="flex-1 min-w-0">
-                          <span className="text-[#e5e5e5] font-medium">{displayTitle}</span>
-                          <span className="ml-1 text-[#555555]">{p.outcome || ""}</span>
+                          <span className="text-[#e5e5e5] font-medium">{label}</span>
+                          <span className={`ml-1.5 text-[10px] font-medium ${outcome === "Yes" ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{outcome}</span>
                         </div>
-                        <div className="text-right shrink-0 w-16">
-                          <div className="text-[#e5e5e5] tabular-nums">{parseFloat(p.size || 0).toFixed(1)}</div>
-                          <div className="text-[9px] text-[#555555]">shares</div>
-                        </div>
-                        <div className="text-right shrink-0 w-16">
-                          <div className={`tabular-nums font-medium ${(p.cashPnl || 0) >= 0 ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>
-                            ${parseFloat(p.cashPnl || 0).toFixed(2)}
-                          </div>
-                          <div className={`text-[9px] tabular-nums ${(p.percentPnl || 0) >= 0 ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>
-                            {parseFloat(p.percentPnl || 0).toFixed(1)}%
-                          </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-[#e5e5e5] tabular-nums font-medium">{parseFloat(p.size || 0).toFixed(0)}</span>
+                          <span className="text-[#555555] ml-1">shares</span>
                         </div>
                       </div>
                     )})
