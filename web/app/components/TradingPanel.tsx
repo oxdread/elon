@@ -71,7 +71,8 @@ export default function TradingPanel({
     const onFill = () => {
       if (pendingToastRef.current) {
         const elapsed = ((performance.now() - orderStartTimeRef.current) / 1000).toFixed(1);
-        toast.success(`Filled! (${elapsed}s from click)`, { id: pendingToastRef.current, duration: 3000, style: { ...toastStyle, color: "#0ecb81" } });
+        console.log(`[trade] Filled! ${elapsed}s from click`);
+        toast.success("Filled!", { id: pendingToastRef.current, duration: 3000, style: { ...toastStyle, color: "#0ecb81" } });
         pendingToastRef.current = null;
         setLoading(false);
       }
@@ -80,12 +81,13 @@ export default function TradingPanel({
       if (!pendingToastRef.current) return;
       const detail = (e as CustomEvent).detail;
       const elapsed = ((performance.now() - orderStartTimeRef.current) / 1000).toFixed(1);
+      console.log(`[trade] Order ${detail?.type} ${elapsed}s from click`);
       if (detail?.type === "PLACEMENT") {
-        toast.success(`Limit order placed (${elapsed}s)`, { id: pendingToastRef.current, duration: 3000, style: { ...toastStyle, color: "#3b82f6" } });
+        toast.success("Limit order placed", { id: pendingToastRef.current, duration: 3000, style: { ...toastStyle, color: "#3b82f6" } });
         pendingToastRef.current = null;
         setLoading(false);
       } else if (detail?.type === "CANCELLATION") {
-        toast.error(`Order cancelled (${elapsed}s)`, { id: pendingToastRef.current, duration: 3000, style: { ...toastStyle, color: "#f6465d" } });
+        toast.error("Order cancelled", { id: pendingToastRef.current, duration: 3000, style: { ...toastStyle, color: "#f6465d" } });
         pendingToastRef.current = null;
         setLoading(false);
       }

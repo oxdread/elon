@@ -259,7 +259,18 @@ async def _run_once(creds: dict, condition_ids: list[str]) -> None:
                     status = data.get("status", "")
                     print(f"[user-ws] trade {status}: {data.get('side')} {data.get('size')} @ {data.get('price')}")
                     if status == "MATCHED":
-                        # Push trade details immediately — browser applies optimistically
+                        # Log WS delay on latest trade_log entry
+                        try:
+                            import psycopg2 as _pg
+                            _conn = _pg.connect(_db_url)
+                            _conn.autocommit = True
+                            _cur = _conn.cursor()
+                            _cur.execute("UPDATE trade_log SET ms_ws_confirm = (extract(epoch from now()) * 1000 - ts * 1000)::int WHERE id = (SELECT max(id) FROM trade_log)")
+                            _cur.close()
+                            _conn.close()
+                        except Exception:
+                            pass
+                        # Push trade details immediately — browser applies locally
                         _ws_push("trade_fill", {
                             "asset_id": data.get("asset_id"),
                             "side": data.get("side"),
