@@ -29,36 +29,20 @@ export default function TradingPanel({
   const pendingToastRef = useRef<string | null>(null);
   const orderStartTimeRef = useRef<number>(0);
 
-  useEffect(() => {
-    if (initialAction) setAction(initialAction);
-  }, [initialAction]);
+  useEffect(() => { if (initialAction) setAction(initialAction); }, [initialAction]);
+  useEffect(() => { if (initialAmount) { setAmount(initialAmount); setInputMode("shares"); } }, [initialAmount]);
+
+  const handleOutcomeChange = (o: "yes" | "no") => { setOutcome(o); onOutcomeChange?.(o); };
 
   useEffect(() => {
-    if (initialAmount) { setAmount(initialAmount); setInputMode("shares"); }
-  }, [initialAmount]);
-
-  const handleOutcomeChange = (o: "yes" | "no") => {
-    setOutcome(o);
-    onOutcomeChange?.(o);
-  };
-
-  useEffect(() => {
-    if (limitPrice != null) {
-      setOrderType("limit");
-      setPrice((limitPrice * 100).toFixed(1));
-    }
+    if (limitPrice != null) { setOrderType("limit"); setPrice((limitPrice * 100).toFixed(1)); }
   }, [limitPrice]);
 
   useEffect(() => {
     if (bracket) {
       let p: number | null = null;
-      if (outcome === "yes") {
-        p = action === "buy" ? bracket.ask : bracket.bid;
-      } else {
-        p = action === "buy"
-          ? (bracket.bid != null ? 1 - bracket.bid : null)
-          : (bracket.ask != null ? 1 - bracket.ask : null);
-      }
+      if (outcome === "yes") { p = action === "buy" ? bracket.ask : bracket.bid; }
+      else { p = action === "buy" ? (bracket.bid != null ? 1 - bracket.bid : null) : (bracket.ask != null ? 1 - bracket.ask : null); }
       if (p != null) setPrice((p * 100).toFixed(1));
     }
   }, [bracket?.id, outcome, action]);
@@ -88,7 +72,6 @@ export default function TradingPanel({
   }, []);
 
   const hasKey = typeof window !== "undefined" && !!localStorage.getItem("poly_private_key");
-
   const yesTokenId = bracket?.yes_token_id;
   const noTokenId = bracket?.no_token_id;
   const yesPos = positions?.find((p) => p.asset === yesTokenId);
@@ -104,24 +87,18 @@ export default function TradingPanel({
   const priceNum = parseFloat(price) || 0;
   const amountNum = parseFloat(amount) || 0;
   const isBuy = action === "buy";
+  const isYes = outcome === "yes";
 
   let shares = 0, total = 0, toWin = 0;
   if (priceNum > 0 && amountNum > 0) {
-    if (inputMode === "shares") {
-      shares = amountNum;
-      total = (shares * priceNum) / 100;
-      toWin = shares - total;
-    } else {
-      total = amountNum;
-      shares = (total * 100) / priceNum;
-      toWin = shares - total;
-    }
+    if (inputMode === "shares") { shares = amountNum; total = (shares * priceNum) / 100; }
+    else { total = amountNum; shares = (total * 100) / priceNum; }
+    toWin = shares - total;
   }
 
   const adjustPrice = (delta: number) => {
-    const current = parseFloat(price) || 0;
-    const next = Math.max(0.1, Math.min(99.9, current + delta));
-    setPrice(next.toFixed(1));
+    const c = parseFloat(price) || 0;
+    setPrice(Math.max(0.1, Math.min(99.9, c + delta)).toFixed(1));
   };
 
   const placeOrder = async () => {
@@ -135,24 +112,13 @@ export default function TradingPanel({
     pendingToastRef.current = toastId;
     try {
       const side = isBuy ? "BUY" : "SELL";
-      const body: Record<string, string | number> = {
-        private_key: key, token_id: bracket.yes_token_id, side, order_type: orderType, funder,
-      };
-      if (orderType === "limit") { body.price = priceNum / 100; body.size = shares; }
-      else { body.amount = total; }
-      const r = await fetch("/api/trade", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...body, _t0: Date.now() }),
-      });
+      const body: Record<string, string | number> = { private_key: key, token_id: bracket.yes_token_id, side, order_type: orderType, funder };
+      if (orderType === "limit") { body.price = priceNum / 100; body.size = shares; } else { body.amount = total; }
+      const r = await fetch("/api/trade", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...body, _t0: Date.now() }) });
       const d = await r.json();
       if (d.status === "ok") {
         toast.loading("Waiting for confirmation...", { id: toastId, style: { ...ts, color: "#0ecb81" } });
-        setTimeout(() => {
-          if (pendingToastRef.current === toastId) {
-            toast.success("Order submitted", { id: toastId, duration: 3000, style: { ...ts, color: "#0ecb81" } });
-            pendingToastRef.current = null; setLoading(false);
-          }
-        }, 15000);
+        setTimeout(() => { if (pendingToastRef.current === toastId) { toast.success("Order submitted", { id: toastId, duration: 3000, style: { ...ts, color: "#0ecb81" } }); pendingToastRef.current = null; setLoading(false); } }, 15000);
       } else {
         toast.error(d.error || "Order failed", { id: toastId, duration: 5000, style: { ...ts, color: "#f6465d" } });
         pendingToastRef.current = null; setLoading(false);
@@ -164,172 +130,144 @@ export default function TradingPanel({
   };
 
   if (!bracket) {
-    return (
-      <div className="h-full flex items-center justify-center text-[#555555] text-xs p-4">
-        <div className="text-center">
-          <div className="text-2xl mb-1 text-[#1a1a1a]">&#8644;</div>
-          <div>Select a bracket</div>
-        </div>
-      </div>
-    );
+    return <div className="h-full flex items-center justify-center text-[#555555] text-xs p-4"><div className="text-center"><div className="text-2xl mb-1 text-[#1a1a1a]">&#8644;</div><div>Select a bracket</div></div></div>;
   }
 
   return (
-    <div className="flex flex-col h-full p-3 gap-3">
+    <div className="flex flex-col h-full">
       {/* Bracket label with image */}
-      <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-lg bg-[#1a1a1a] shrink-0 overflow-hidden">
+      <div className="flex items-center gap-2.5 px-3 pt-3 pb-2">
+        <div className="w-8 h-8 rounded-lg bg-[#1a1a1a] shrink-0 overflow-hidden">
           <img src="/elon-red.jpg" alt="" className="w-full h-full object-cover" />
         </div>
-        <span className="text-base font-bold text-[#e5e5e5]">{bracket.label}</span>
+        <span className="text-[13px] font-bold text-[#e5e5e5]">{bracket.label}</span>
       </div>
 
-      {/* Buy / Sell tabs */}
-      <div className="flex border-b border-[#1a1a1a]">
-        <button onClick={() => setAction("buy")}
-          className={`px-4 pb-2 text-sm font-bold transition-colors ${
-            isBuy ? "text-[#e5e5e5] border-b-2 border-[#e5e5e5]" : "text-[#555555] hover:text-[#808080]"
-          }`}>Buy</button>
-        <button onClick={() => setAction("sell")}
-          className={`px-4 pb-2 text-sm font-bold transition-colors ${
-            !isBuy ? "text-[#e5e5e5] border-b-2 border-[#e5e5e5]" : "text-[#555555] hover:text-[#808080]"
-          }`}>Sell</button>
+      {/* Yes / No top tabs */}
+      <div className="flex shrink-0">
+        <button onClick={() => handleOutcomeChange("yes")}
+          className={`flex-1 py-2 text-sm font-bold transition-all relative ${
+            isYes ? "text-[#0ecb81]" : "text-[#555555] hover:text-[#808080]"
+          }`}>
+          Yes {yesAsk != null ? `${yesAsk.toFixed(1)}¢` : ""}
+          {isYes && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0ecb81]" />}
+        </button>
+        <button onClick={() => handleOutcomeChange("no")}
+          className={`flex-1 py-2 text-sm font-bold transition-all relative ${
+            !isYes ? "text-[#f6465d]" : "text-[#555555] hover:text-[#808080]"
+          }`}>
+          No {noAsk != null ? `${noAsk.toFixed(1)}¢` : ""}
+          {!isYes && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#f6465d]" />}
+        </button>
       </div>
 
-      {/* Yes / No buttons with shares underneath */}
-      <div className="flex gap-2">
-        <div className="flex-1">
-          <button onClick={() => handleOutcomeChange("yes")}
-            className={`w-full py-2.5 rounded-lg text-sm font-bold transition-all ${
-              outcome === "yes"
-                ? "bg-[#0ecb81] text-white"
-                : "bg-[#131313] text-[#555555] border border-[#1a1a1a]/50 hover:text-[#808080]"
-            }`}>
-            Yes {yesAsk != null ? `${yesAsk.toFixed(1)}¢` : ""}
-          </button>
-          {yesShares > 0 && (
-            <div className="text-[10px] text-[#0ecb81] mt-1 text-center tabular-nums">{yesShares.toLocaleString()} shares</div>
-          )}
-        </div>
-        <div className="flex-1">
-          <button onClick={() => handleOutcomeChange("no")}
-            className={`w-full py-2.5 rounded-lg text-sm font-bold transition-all ${
-              outcome === "no"
-                ? "bg-[#f6465d] text-white"
-                : "bg-[#131313] text-[#555555] border border-[#1a1a1a]/50 hover:text-[#808080]"
-            }`}>
-            No {noAsk != null ? `${noAsk.toFixed(1)}¢` : ""}
-          </button>
-          {noShares > 0 && (
-            <div className="text-[10px] text-[#f6465d] mt-1 text-center tabular-nums">{noShares.toLocaleString()} shares</div>
-          )}
-        </div>
-      </div>
+      {/* Content area with subtle gradient bg */}
+      <div className="flex-1 flex flex-col px-3 pb-3 pt-2 gap-2.5"
+        style={{ background: isYes
+          ? "linear-gradient(180deg, rgba(14,203,129,0.04) 0%, transparent 40%)"
+          : "linear-gradient(180deg, rgba(246,70,93,0.04) 0%, transparent 40%)"
+        }}>
 
-      {/* Order type + Limit Price */}
-      <div className="flex items-center gap-2">
-        {/* Custom order type dropdown */}
-        <div className="relative">
-          <button onClick={() => setShowOrderType(!showOrderType)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#111] border border-[#1a1a1a]/50 text-[11px] text-[#808080] hover:text-[#e5e5e5] transition-colors">
-            {orderType === "limit" ? "Limit" : "Market"}
-            <svg width="8" height="5" viewBox="0 0 8 5" className="ml-0.5"><path d="M0.5 0.5L4 4L7.5 0.5" stroke="currentColor" strokeWidth="1.2" fill="none"/></svg>
-          </button>
-          {showOrderType && (
-            <div className="absolute top-full left-0 mt-1 bg-[#141414] border border-[#252525] rounded-lg overflow-hidden z-20 shadow-xl min-w-[100px]">
-              <button onClick={() => { setOrderType("limit"); setShowOrderType(false); }}
-                className={`block w-full text-left px-3 py-2 text-[11px] hover:bg-[#1a1a1a] transition-colors ${orderType === "limit" ? "text-[#e5e5e5]" : "text-[#808080]"}`}>Limit</button>
-              <button onClick={() => { setOrderType("market"); setShowOrderType(false); }}
-                className={`block w-full text-left px-3 py-2 text-[11px] hover:bg-[#1a1a1a] transition-colors ${orderType === "market" ? "text-[#e5e5e5]" : "text-[#808080]"}`}>Market</button>
-            </div>
-          )}
-        </div>
-        {orderType === "limit" && (
-          <div className="flex-1 flex items-center bg-[#0d0d0d] rounded-lg border border-[#1a1a1a]/50 overflow-hidden">
-            <button onClick={() => adjustPrice(-0.5)}
-              className="px-2.5 py-1.5 text-[#555555] hover:text-[#e5e5e5] hover:bg-[#131313] text-sm transition-colors">−</button>
-            <div className="flex-1 text-center text-xs font-bold text-[#e5e5e5] tabular-nums py-1.5">
-              {priceNum.toFixed(1)}¢
-            </div>
-            <button onClick={() => adjustPrice(0.5)}
-              className="px-2.5 py-1.5 text-[#555555] hover:text-[#e5e5e5] hover:bg-[#131313] text-sm transition-colors">+</button>
+        {/* Shares owned */}
+        {((isYes && yesShares > 0) || (!isYes && noShares > 0)) && (
+          <div className={`text-[10px] tabular-nums ${isYes ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>
+            {(isYes ? yesShares : noShares).toLocaleString()} shares
           </div>
         )}
-      </div>
 
-      {/* Amount input */}
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <div className="text-[10px] text-[#555555]">{inputMode === "dollars" ? "Amount" : "Shares"}</div>
-          <div className="flex bg-[#0d0d0d] rounded-md p-0.5 border border-[#1a1a1a]/50">
-            <button onClick={() => setInputMode("dollars")}
-              className={`px-2 py-0.5 rounded text-[9px] font-medium transition-all ${
-                inputMode === "dollars" ? "bg-[#1a1a1a] text-[#e5e5e5]" : "text-[#555555]"
-              }`}>USD</button>
-            <button onClick={() => setInputMode("shares")}
-              className={`px-2 py-0.5 rounded text-[9px] font-medium transition-all ${
-                inputMode === "shares" ? "bg-[#1a1a1a] text-[#e5e5e5]" : "text-[#555555]"
-              }`}>Shares</button>
+        {/* Order type + Limit Price row */}
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <button onClick={() => setShowOrderType(!showOrderType)}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#111] border border-[#1a1a1a]/50 text-[11px] text-[#808080] hover:text-[#e5e5e5] transition-colors">
+              {orderType === "limit" ? "Limit" : "Market"}
+              <svg width="8" height="5" viewBox="0 0 8 5" className="ml-0.5"><path d="M0.5 0.5L4 4L7.5 0.5" stroke="currentColor" strokeWidth="1.2" fill="none"/></svg>
+            </button>
+            {showOrderType && (
+              <div className="absolute top-full left-0 mt-1 bg-[#141414] border border-[#252525] rounded-lg overflow-hidden z-20 shadow-xl min-w-[90px]">
+                <button onClick={() => { setOrderType("limit"); setShowOrderType(false); }}
+                  className={`block w-full text-left px-3 py-1.5 text-[11px] hover:bg-[#1a1a1a] transition-colors ${orderType === "limit" ? "text-[#e5e5e5]" : "text-[#808080]"}`}>Limit</button>
+                <button onClick={() => { setOrderType("market"); setShowOrderType(false); }}
+                  className={`block w-full text-left px-3 py-1.5 text-[11px] hover:bg-[#1a1a1a] transition-colors ${orderType === "market" ? "text-[#e5e5e5]" : "text-[#808080]"}`}>Market</button>
+              </div>
+            )}
           </div>
+          {orderType === "limit" && (
+            <div className="flex-1 flex items-center bg-[#0d0d0d] rounded-lg border border-[#1a1a1a]/50 overflow-hidden">
+              <button onClick={() => adjustPrice(-0.5)} className="px-2.5 py-1.5 text-[#555555] hover:text-[#e5e5e5] hover:bg-[#131313] text-sm transition-colors">−</button>
+              <div className="flex-1 text-center text-xs font-bold text-[#e5e5e5] tabular-nums py-1.5">{priceNum.toFixed(1)}¢</div>
+              <button onClick={() => adjustPrice(0.5)} className="px-2.5 py-1.5 text-[#555555] hover:text-[#e5e5e5] hover:bg-[#131313] text-sm transition-colors">+</button>
+            </div>
+          )}
         </div>
-        <div className="flex items-center bg-[#0d0d0d] rounded-lg border border-[#1a1a1a]/50 overflow-hidden">
-          <span className="pl-3 text-[#555555] text-xs">{inputMode === "dollars" ? "$" : "#"}</span>
-          <input type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-            placeholder="0.00"
-            className="flex-1 bg-transparent px-2 py-2 text-xs text-[#e5e5e5] text-right focus:outline-none tabular-nums font-medium" />
-        </div>
-        <div className="flex gap-1 mt-1.5">
-          {isBuy ? (
-            (inputMode === "dollars" ? [1, 5, 10, 20, 50] : [10, 50, 100, 500]).map((v) => (
-              <button key={v} onClick={() => setAmount(String(v))}
-                className="flex-1 py-0.5 rounded-md text-[9px] font-medium bg-[#111] text-[#555555] hover:text-[#e5e5e5] hover:bg-[#1a1a1a] border border-[#1a1a1a]/30 transition-colors">
-                {inputMode === "dollars" ? `$${v}` : v}
-              </button>
-            ))
-          ) : (
-            [10, 25, 50, 100].map((pct) => {
-              const curShares = outcome === "yes" ? yesShares : noShares;
-              return (
-                <button key={pct} onClick={() => {
-                  if (curShares > 0) { setAmount(String(Math.floor(curShares * pct / 100))); setInputMode("shares"); }
-                }}
+
+        {/* Amount input */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[10px] text-[#555555]">{inputMode === "dollars" ? "Amount" : "Shares"}</div>
+            <div className="flex bg-[#0d0d0d] rounded-md p-0.5 border border-[#1a1a1a]/50">
+              <button onClick={() => setInputMode("dollars")}
+                className={`px-2 py-0.5 rounded text-[9px] font-medium transition-all ${inputMode === "dollars" ? "bg-[#1a1a1a] text-[#e5e5e5]" : "text-[#555555]"}`}>USD</button>
+              <button onClick={() => setInputMode("shares")}
+                className={`px-2 py-0.5 rounded text-[9px] font-medium transition-all ${inputMode === "shares" ? "bg-[#1a1a1a] text-[#e5e5e5]" : "text-[#555555]"}`}>Shares</button>
+            </div>
+          </div>
+          <div className="flex items-center bg-[#0d0d0d] rounded-lg border border-[#1a1a1a]/50 overflow-hidden">
+            <span className="pl-3 text-[#555555] text-xs">{inputMode === "dollars" ? "$" : "#"}</span>
+            <input type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+              placeholder="0.00" className="flex-1 bg-transparent px-2 py-2 text-xs text-[#e5e5e5] text-right focus:outline-none tabular-nums font-medium" />
+          </div>
+          <div className="flex gap-1 mt-1.5">
+            {isBuy ? (
+              (inputMode === "dollars" ? [1, 5, 10, 20, 50] : [10, 50, 100, 500]).map((v) => (
+                <button key={v} onClick={() => setAmount(String(v))}
                   className="flex-1 py-0.5 rounded-md text-[9px] font-medium bg-[#111] text-[#555555] hover:text-[#e5e5e5] hover:bg-[#1a1a1a] border border-[#1a1a1a]/30 transition-colors">
-                  {pct === 100 ? "All" : `${pct}%`}
+                  {inputMode === "dollars" ? `$${v}` : v}
                 </button>
-              );
-            })
+              ))
+            ) : (
+              [10, 25, 50, 100].map((pct) => {
+                const cur = isYes ? yesShares : noShares;
+                return (
+                  <button key={pct} onClick={() => { if (cur > 0) { setAmount(String(Math.floor(cur * pct / 100))); setInputMode("shares"); } }}
+                    className="flex-1 py-0.5 rounded-md text-[9px] font-medium bg-[#111] text-[#555555] hover:text-[#e5e5e5] hover:bg-[#1a1a1a] border border-[#1a1a1a]/30 transition-colors">
+                    {pct === 100 ? "All" : `${pct}%`}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div className="space-y-0.5 text-[11px]">
+          <div className="flex justify-between">
+            <span className="text-[#555555]">{inputMode === "shares" ? "Shares" : "Est. shares"}</span>
+            <span className="text-[#e5e5e5] tabular-nums">{shares > 0 ? shares.toFixed(1) : "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-[#555555]">Total</span>
+            <span className="text-[#e5e5e5] font-bold tabular-nums">${total > 0 ? total.toFixed(2) : "0.00"}</span>
+          </div>
+          {isBuy && toWin > 0 && (
+            <div className="flex justify-between">
+              <span className="text-[#555555]">Potential</span>
+              <span className="text-[#0ecb81] font-bold tabular-nums">+${toWin.toFixed(2)}</span>
+            </div>
           )}
         </div>
-      </div>
 
-      {/* Summary */}
-      <div className="space-y-0.5 text-[11px]">
-        <div className="flex justify-between">
-          <span className="text-[#555555]">{inputMode === "shares" ? "Shares" : "Est. shares"}</span>
-          <span className="text-[#e5e5e5] tabular-nums">{shares > 0 ? shares.toFixed(1) : "—"}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-[#555555]">Total</span>
-          <span className="text-[#e5e5e5] font-bold tabular-nums">${total > 0 ? total.toFixed(2) : "0.00"}</span>
-        </div>
-        {isBuy && toWin > 0 && (
-          <div className="flex justify-between">
-            <span className="text-[#555555]">Potential</span>
-            <span className="text-[#0ecb81] font-bold tabular-nums">+${toWin.toFixed(2)}</span>
-          </div>
-        )}
+        {/* Big Buy/Sell button */}
+        <button
+          onClick={placeOrder}
+          disabled={!hasKey || loading || total <= 0}
+          className={`w-full py-3 rounded-lg font-bold text-sm text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed mt-auto ${
+            isBuy ? "bg-[#0ecb81] hover:bg-[#0bb874]" : "bg-[#f6465d] hover:bg-[#e03e54]"
+          }`}
+        >
+          {!hasKey ? "Import key in Settings" : isBuy ? `Buy ${isYes ? "Yes" : "No"}` : `Sell ${isYes ? "Yes" : "No"}`}
+        </button>
       </div>
-
-      {/* Submit */}
-      <button
-        onClick={placeOrder}
-        disabled={!hasKey || loading || total <= 0}
-        className={`w-full py-2.5 rounded-lg font-bold text-sm text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-          isBuy ? "bg-[#0ecb81] hover:bg-[#0bb874]" : "bg-[#f6465d] hover:bg-[#e03e54]"
-        }`}
-      >
-        {!hasKey ? "Import key in Settings" : isBuy ? `Buy ${outcome === "yes" ? "Yes" : "No"}` : `Sell ${outcome === "yes" ? "Yes" : "No"}`}
-      </button>
     </div>
   );
 }
