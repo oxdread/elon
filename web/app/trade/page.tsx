@@ -693,17 +693,15 @@ export default function TradePage() {
           <div className="h-60 flex gap-2 shrink-0">
             {/* Elon Tweets / Comments / Trades */}
             <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden flex flex-col">
-              <div className="flex border-b border-[#1a1a1a] shrink-0">
+              <div className="flex gap-1 px-2 py-1.5 border-b border-[#1a1a1a] shrink-0">
                 <button onClick={() => setLeftTab("tweets")}
-                  className={`flex-1 py-1.5 text-[10px] font-bold uppercase ${leftTab === "tweets" ? "text-[#3b82f6] border-b-2 border-[#3b82f6]" : "text-[#555555]"}`}>
-                  Tweets {tweetLog.length > 0 && <span className="text-[#3b82f6] ml-1">{tweetLog.length}</span>}
+                  className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors ${leftTab === "tweets" ? "text-[#e5e5e5] bg-[#1a1a1a]" : "text-[#555555] hover:text-[#808080]"}`}>
+                  Tweets {tweetLog.length > 0 && <span className="text-[#3b82f6] ml-0.5">{tweetLog.length}</span>}
                 </button>
-                <button onClick={() => setBottomTab("comments")}
-                  className={`flex-1 py-1.5 text-[10px] font-bold uppercase ${leftTab !== "tweets" && bottomTab === "comments" ? "text-[#3b82f6] border-b-2 border-[#3b82f6]" : "text-[#555555]"}`}
-                  onClickCapture={() => setLeftTab("other")}>Comments</button>
-                <button onClick={() => setBottomTab("trades")}
-                  className={`flex-1 py-1.5 text-[10px] font-bold uppercase ${leftTab !== "tweets" && bottomTab === "trades" ? "text-[#3b82f6] border-b-2 border-[#3b82f6]" : "text-[#555555]"}`}
-                  onClickCapture={() => setLeftTab("other")}>Trades</button>
+                <button onClick={() => { setLeftTab("other"); setBottomTab("comments"); }}
+                  className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors ${leftTab !== "tweets" && bottomTab === "comments" ? "text-[#e5e5e5] bg-[#1a1a1a]" : "text-[#555555] hover:text-[#808080]"}`}>Comments</button>
+                <button onClick={() => { setLeftTab("other"); setBottomTab("trades"); }}
+                  className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors ${leftTab !== "tweets" && bottomTab === "trades" ? "text-[#e5e5e5] bg-[#1a1a1a]" : "text-[#555555] hover:text-[#808080]"}`}>Trades</button>
               </div>
               <div className="flex-1 overflow-y-auto min-h-0">
                 {leftTab === "tweets" ? (
@@ -745,11 +743,11 @@ export default function TradePage() {
 
             {/* Position / Open Orders / History */}
             <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden flex flex-col">
-              <div className="flex border-b border-[#1a1a1a] shrink-0">
+              <div className="flex gap-1 px-2 py-1.5 border-b border-[#1a1a1a] shrink-0">
                 {(["positions", "orders", "history"] as const).map((t) => (
                   <button key={t} onClick={() => setPosTab(t)}
-                    className={`flex-1 py-1.5 text-[10px] font-bold uppercase ${
-                      posTab === t ? "text-[#3b82f6] border-b-2 border-[#3b82f6]" : "text-[#555555]"
+                    className={`px-3 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                      posTab === t ? "text-[#e5e5e5] bg-[#1a1a1a]" : "text-[#555555] hover:text-[#808080]"
                     }`}>{t === "positions" ? "Positions" : t === "orders" ? "Open Orders" : "History"}</button>
                 ))}
               </div>
@@ -782,7 +780,7 @@ export default function TradePage() {
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isYes ? "text-[#0ecb81] bg-[#0ecb81]/10 border border-[#0ecb81]/20" : "text-[#f6465d] bg-[#f6465d]/10 border border-[#f6465d]/20"}`}>{outcome}</span>
                           </div>
                           <span className={`text-base tabular-nums font-bold ${pnl >= 0 ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>
-                            {pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}
+                            ${curValue.toFixed(2)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
@@ -800,7 +798,7 @@ export default function TradePage() {
                               <span className="text-[11px] text-[#e5e5e5] tabular-nums ml-1">{(parseFloat(p.curPrice || 0) * 100).toFixed(1)}¢</span>
                             </div>
                           </div>
-                          <span className="text-[11px] text-[#808080] tabular-nums">${curValue.toFixed(2)}</span>
+                          <span className={`text-[11px] tabular-nums font-medium ${pnl >= 0 ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}</span>
                         </div>
                       </div>
                     )})}
