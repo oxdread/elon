@@ -143,30 +143,29 @@ export default function TradingPanel({
         <span className="text-[13px] font-bold text-[#e5e5e5]">{bracket.label}</span>
       </div>
 
-      {/* Yes / No top tabs */}
+      {/* Yes / No top tabs — active tab merges into content */}
       <div className="flex shrink-0">
         <button onClick={() => handleOutcomeChange("yes")}
-          className={`flex-1 py-2 text-sm font-bold transition-all relative ${
-            isYes ? "text-[#0ecb81]" : "text-[#555555] hover:text-[#808080]"
+          className={`flex-1 py-2 text-sm font-bold transition-all ${
+            isYes
+              ? "text-[#0ecb81] bg-[#0d0d0d] rounded-t-lg border border-[#1a1a1a] border-b-0"
+              : "text-[#555555] hover:text-[#808080] border-b border-[#1a1a1a]"
           }`}>
           Yes {yesAsk != null ? `${yesAsk.toFixed(1)}¢` : ""}
-          {isYes && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0ecb81]" />}
         </button>
         <button onClick={() => handleOutcomeChange("no")}
-          className={`flex-1 py-2 text-sm font-bold transition-all relative ${
-            !isYes ? "text-[#f6465d]" : "text-[#555555] hover:text-[#808080]"
+          className={`flex-1 py-2 text-sm font-bold transition-all ${
+            !isYes
+              ? "text-[#f6465d] bg-[#0d0d0d] rounded-t-lg border border-[#1a1a1a] border-b-0"
+              : "text-[#555555] hover:text-[#808080] border-b border-[#1a1a1a]"
           }`}>
           No {noAsk != null ? `${noAsk.toFixed(1)}¢` : ""}
-          {!isYes && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#f6465d]" />}
         </button>
       </div>
 
-      {/* Content area with subtle gradient bg */}
-      <div className="flex-1 flex flex-col px-3 pb-3 pt-2 gap-2.5"
-        style={{ background: isYes
-          ? "linear-gradient(180deg, rgba(14,203,129,0.04) 0%, transparent 40%)"
-          : "linear-gradient(180deg, rgba(246,70,93,0.04) 0%, transparent 40%)"
-        }}>
+      {/* Content area — connected to active tab */}
+      <div className="flex flex-col flex-1 px-3 pb-3 pt-2 gap-2.5 bg-[#0d0d0d] border-x border-b border-[#1a1a1a] rounded-b-lg"
+        style={{ borderTop: isYes ? "none" : "none" }}>
 
         {/* Shares owned */}
         {((isYes && yesShares > 0) || (!isYes && noShares > 0)) && (
@@ -261,7 +260,7 @@ export default function TradingPanel({
         <button
           onClick={placeOrder}
           disabled={!hasKey || loading || total <= 0}
-          className={`w-full py-3 rounded-lg font-bold text-sm text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed mt-auto ${
+          className={`w-full py-3 rounded-lg font-bold text-sm text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
             isBuy ? "bg-[#0ecb81] hover:bg-[#0bb874]" : "bg-[#f6465d] hover:bg-[#e03e54]"
           }`}
         >
