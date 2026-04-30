@@ -170,8 +170,9 @@ export default function TradePage() {
                   return prev;
                 }
               });
-              // Notify TradingPanel toast
+              // Notify TradingPanel toast + Header cash update
               window.dispatchEvent(new Event("ws-trade-fill"));
+              window.dispatchEvent(new CustomEvent("ws-cash-update", { detail: { side, size: sz, price: pr } }));
             }
           }
           // User channel: order placement/cancellation

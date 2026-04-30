@@ -90,7 +90,21 @@ export default function Header() {
     };
     connect();
 
-    return () => { clearTimeout(reconnectTimer); ws?.close(); };
+    // Listen for instant cash update from trade_fill
+    const onCashUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { side: string; size: number; price: number } | undefined;
+      if (detail) {
+        const cost = detail.size * detail.price;
+        if (detail.side === "BUY") {
+          setCash((prev) => prev != null ? String(parseFloat(prev) - cost * 1e6) : prev);
+        } else {
+          setCash((prev) => prev != null ? String(parseFloat(prev) + cost * 1e6) : prev);
+        }
+      }
+    };
+    window.addEventListener("ws-cash-update", onCashUpdate);
+
+    return () => { clearTimeout(reconnectTimer); ws?.close(); window.removeEventListener("ws-cash-update", onCashUpdate); };
   }, []);
 
   const statusAge = mounted && status?.last_poll_ts ? now - status.last_poll_ts : null;
