@@ -258,8 +258,16 @@ async def _run_once(creds: dict, condition_ids: list[str]) -> None:
                 if event_type == "trade":
                     status = data.get("status", "")
                     print(f"[user-ws] trade {status}: {data.get('side')} {data.get('size')} @ {data.get('price')}")
-                    if status in ("CONFIRMED", "MATCHED"):
-                        # Fetch and push full account state
+                    if status == "MATCHED":
+                        # Push trade details immediately — browser applies optimistically
+                        _ws_push("trade_fill", {
+                            "asset_id": data.get("asset_id"),
+                            "side": data.get("side"),
+                            "size": data.get("size"),
+                            "price": data.get("price"),
+                        })
+                    elif status == "CONFIRMED":
+                        # Now Polymarket has updated — fetch real data
                         await asyncio.get_event_loop().run_in_executor(None, lambda: _save_and_push(creds))
 
                 elif event_type == "order":

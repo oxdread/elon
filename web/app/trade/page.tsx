@@ -130,7 +130,38 @@ export default function TradePage() {
               }
             } catch {}
           }
-          // User channel: full account update from WS
+          // User channel: trade filled — apply instantly to positions
+          if (msg.type === "trade_fill" && msg.data) {
+            const { asset_id, side, size, price } = msg.data;
+            if (asset_id && side && size) {
+              const sz = parseFloat(size);
+              const pr = parseFloat(price || 0);
+              setPositionsData((prev: any[]) => {
+                const existing = prev.find((p) => p.asset === asset_id);
+                if (side === "BUY") {
+                  if (existing) {
+                    const newSize = parseFloat(existing.size || 0) + sz;
+                    return prev.map((p) => p.asset === asset_id
+                      ? { ...p, size: String(newSize), currentValue: String(parseFloat(p.currentValue || 0) + sz * pr) }
+                      : p
+                    );
+                  }
+                  return [...prev, { asset: asset_id, size: String(sz), curPrice: String(pr), currentValue: String(sz * pr) }];
+                } else {
+                  if (existing) {
+                    const newSize = Math.max(0, parseFloat(existing.size || 0) - sz);
+                    if (newSize <= 0) return prev.filter((p) => p.asset !== asset_id);
+                    return prev.map((p) => p.asset === asset_id
+                      ? { ...p, size: String(newSize), currentValue: String(Math.max(0, parseFloat(p.currentValue || 0) - sz * pr)) }
+                      : p
+                    );
+                  }
+                  return prev;
+                }
+              });
+            }
+          }
+          // User channel: full account update from WS (on CONFIRMED — real data)
           if (msg.type === "account_update" && msg.data) {
             if (Array.isArray(msg.data.positions)) setPositionsData(msg.data.positions);
             if (Array.isArray(msg.data.open_orders)) setOpenOrders(msg.data.open_orders);
