@@ -669,7 +669,6 @@ export default function TradePage() {
                   outcome={tradeOutcome}
                   openOrders={openOrders}
                   onClickOrder={(side, price, size) => {
-                    setTradeAction(side);
                     setLimitPrice(price);
                     setTradeAmount(String(Math.round(size)));
                   }}
@@ -685,6 +684,7 @@ export default function TradePage() {
                 initialAction={tradeAction}
                 initialAmount={tradeAmount}
                 onOutcomeChange={setTradeOutcome}
+                positions={positionsData}
               />
             </div>
           </div>
