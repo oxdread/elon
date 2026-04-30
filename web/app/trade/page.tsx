@@ -139,23 +139,31 @@ export default function TradePage() {
             if (asset_id && side && size) {
               const sz = parseFloat(size);
               const pr = parseFloat(price || 0);
+              // Find bracket info for this token
+              const bracket = allBrackets.find((b) => b.yes_token_id === asset_id || b.no_token_id === asset_id);
               setPositionsData((prev: any[]) => {
                 const existing = prev.find((p) => p.asset === asset_id);
                 if (side === "BUY") {
                   if (existing) {
                     const newSize = parseFloat(existing.size || 0) + sz;
                     return prev.map((p) => p.asset === asset_id
-                      ? { ...p, size: String(newSize), currentValue: String(parseFloat(p.currentValue || 0) + sz * pr) }
+                      ? { ...p, size: String(newSize), currentValue: String(newSize * pr) }
                       : p
                     );
                   }
-                  return [...prev, { asset: asset_id, size: String(sz), curPrice: String(pr), currentValue: String(sz * pr) }];
+                  return [...prev, {
+                    asset: asset_id, size: String(sz), curPrice: String(pr),
+                    currentValue: String(sz * pr),
+                    title: bracket?.label || "—",
+                    conditionId: bracket?.id,
+                    outcome: bracket?.yes_token_id === asset_id ? "Yes" : "No",
+                  }];
                 } else {
                   if (existing) {
                     const newSize = Math.max(0, parseFloat(existing.size || 0) - sz);
                     if (newSize <= 0) return prev.filter((p) => p.asset !== asset_id);
                     return prev.map((p) => p.asset === asset_id
-                      ? { ...p, size: String(newSize), currentValue: String(Math.max(0, parseFloat(p.currentValue || 0) - sz * pr)) }
+                      ? { ...p, size: String(newSize), currentValue: String(newSize * pr) }
                       : p
                     );
                   }

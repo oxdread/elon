@@ -28,6 +28,8 @@ export async function POST(req: NextRequest) {
 
     // Cancel order action
     if (action === "cancel" && private_key && order_id) {
+      const safeKey = private_key.replace(/[^a-fA-F0-9x]/g, "");
+      const safeOrderId = String(order_id).replace(/[^a-fA-F0-9x-]/g, "");
       let apiCreds = "None";
       try {
         const { rows } = await query("SELECT api_key, api_secret, api_passphrase FROM user_config WHERE id = 1");
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest) {
 import json, sys
 sys.path.insert(0, "${CWD}")
 from collector.trading import cancel_order
-r = cancel_order("${private_key}", "${order_id}", ${apiCreds})
+r = cancel_order("${safeKey}", "${safeOrderId}", ${apiCreds})
 print(json.dumps(r))
 `;
       try {
