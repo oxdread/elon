@@ -53,6 +53,7 @@ export default function TradePage() {
   const [openOrders, setOpenOrders] = useState<any[]>([]);
   const [posTab, setPosTab] = useState<"positions" | "orders" | "history">("positions");
   const prevTweetIdRef = useRef<string | null>(null);
+  const wsConnectedRef = useRef(false);
 
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -82,6 +83,8 @@ export default function TradePage() {
         ? `ws://${window.location.hostname}:3001`
         : "ws://localhost:3001";
       ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => { wsConnectedRef.current = true; };
 
       ws.onmessage = (e) => {
         try {
@@ -170,6 +173,7 @@ export default function TradePage() {
       };
 
       ws.onclose = () => {
+        wsConnectedRef.current = false;
         reconnectTimer = setTimeout(connect, 3000);
       };
 
@@ -226,12 +230,13 @@ export default function TradePage() {
     ? allBrackets.find((b) => b.id === selectedBracket)
     : (selectedEvent ? allBrackets.find((b) => b.event_id === selectedEvent) : null);
 
-  // Wallet: initial load + fallback poll every 10s (WS is primary, poll is safety net)
+  // Wallet: initial load + fallback poll only when WS is disconnected
   useEffect(() => {
     const key = typeof window !== "undefined" ? localStorage.getItem("poly_private_key") : null;
     const funder = typeof window !== "undefined" ? localStorage.getItem("poly_funder") : null;
     if (!key || !funder) return;
     const fetchWallet = async () => {
+      if (wsConnectedRef.current) return; // WS handles updates, skip poll
       try {
         const [posRes, ordRes] = await Promise.allSettled([
           fetch("/api/wallet", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -243,7 +248,7 @@ export default function TradePage() {
         if (ordRes.status === "fulfilled" && Array.isArray(ordRes.value)) setOpenOrders(ordRes.value);
       } catch {}
     };
-    fetchWallet();
+    fetchWallet(); // initial load always runs
     const id = setInterval(fetchWallet, 10000);
     return () => clearInterval(id);
   }, [mounted]);
