@@ -8,6 +8,11 @@ import Comments from "../components/Comments";
 type Event = { id: string; slug: string; title: string; start_date: string; end_date: string };
 type Tweet = { id: string; ts: number; text: string };
 
+const TOP_TRADERS = [
+  { name: "gustav4", address: "0x471abf0558dcd381dcea2fdf54390760c9a30328" },
+  { name: "prexpect", address: "0xa59c570a9eca148da55f6e1f47a538c0c600bb62" },
+];
+
 export default function TweetsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [tweetCounts, setTweetCounts] = useState<Record<string, number>>({});
@@ -16,8 +21,7 @@ export default function TweetsPage() {
   const [commentsData, setCommentsData] = useState<unknown[] | null>(null);
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState(0);
-  const [trackedWallets, setTrackedWallets] = useState<string[]>([]);
-  const [walletInput, setWalletInput] = useState("");
+  const [trackerTrades, setTrackerTrades] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     setMounted(true);
@@ -59,6 +63,24 @@ export default function TweetsPage() {
     return () => clearInterval(id);
   }, []);
 
+  // Fetch top trader trades
+  useEffect(() => {
+    const fetchTraders = async () => {
+      const results: Record<string, any[]> = {};
+      for (const t of TOP_TRADERS) {
+        try {
+          const r = await fetch(`https://data-api.polymarket.com/trades?maker=${t.address}&limit=10`);
+          const d = await r.json();
+          if (Array.isArray(d)) results[t.address] = d;
+        } catch {}
+      }
+      setTrackerTrades(results);
+    };
+    fetchTraders();
+    const id = setInterval(fetchTraders, 30000);
+    return () => clearInterval(id);
+  }, []);
+
   if (!mounted) return <div className="p-4 text-[#555555]">Loading...</div>;
 
   const selectedEv = events.find((e) => e.id === selectedEvent);
@@ -81,8 +103,15 @@ export default function TweetsPage() {
     }
   }
 
-  const toDate = new Date().toISOString().slice(0, 10);
-  const fromDate = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+  // Heatmap date range follows selected event
+  let fromDate = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+  let toDate = new Date().toISOString().slice(0, 10);
+  if (selectedEv?.start_date && selectedEv?.end_date) {
+    fromDate = selectedEv.start_date.slice(0, 10);
+    const endD = new Date(selectedEv.end_date);
+    const nowD = new Date();
+    toDate = (endD < nowD ? endD : nowD).toISOString().slice(0, 10);
+  }
 
   return (
     <div className="h-full bg-[#060606] flex flex-col p-2 gap-2 overflow-hidden">
@@ -162,46 +191,47 @@ export default function TweetsPage() {
               </div>
             </div>
 
-            {/* Top Wallet Tracker — 45% */}
+            {/* Top Traders — fixed */}
             <div className="flex-[4] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
-                <span className="text-xs font-bold text-[#e5e5e5]">Top Wallet Tracker</span>
+                <span className="text-xs font-bold text-[#e5e5e5]">Top Traders</span>
               </div>
-              <div className="px-3 py-2 border-b border-[#1a1a1a]/40 shrink-0">
-                <div className="flex gap-1.5">
-                  <input type="text" value={walletInput} onChange={(e) => setWalletInput(e.target.value)}
-                    placeholder="0x... wallet address"
-                    className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a]/50 rounded-md px-2.5 py-1.5 text-[11px] text-[#e5e5e5] font-mono focus:outline-none focus:border-[#3b82f6]/50" />
-                  <button onClick={() => {
-                    if (walletInput.trim() && !trackedWallets.includes(walletInput.trim())) {
-                      setTrackedWallets((prev) => [...prev, walletInput.trim()]);
-                      setWalletInput("");
-                    }
-                  }} className="px-3 py-1.5 rounded-md text-[10px] font-bold bg-[#3b82f6] text-white hover:bg-blue-500 transition-colors shrink-0">
-                    Track
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto">
-                {trackedWallets.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-[#555555] text-xs">
-                    Add wallet addresses to track their trades
-                  </div>
-                ) : (
-                  <div className="p-1.5 flex flex-col gap-1">
-                    {trackedWallets.map((w, i) => (
-                      <div key={i} className="flex items-center px-3 py-2 rounded-lg bg-[#111111] border border-[#1a1a1a]/40 text-[11px]">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#3b82f6]/30 to-[#0ecb81]/30 flex items-center justify-center text-[9px] font-bold text-[#808080] shrink-0">
-                          {i + 1}
+              <div className="flex-1 overflow-y-auto p-1.5">
+                <div className="flex flex-col gap-1.5">
+                  {TOP_TRADERS.map((trader) => {
+                    const trades = trackerTrades[trader.address] || [];
+                    return (
+                      <div key={trader.address} className="rounded-lg bg-[#111111] border border-[#1a1a1a]/40 overflow-hidden">
+                        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[#1a1a1a]/30">
+                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#3b82f6]/40 to-[#0ecb81]/40 flex items-center justify-center text-[8px] font-bold text-[#e5e5e5] shrink-0">
+                            {trader.name.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-[11px] font-bold text-[#3b82f6]">@{trader.name}</span>
+                          <span className="text-[9px] text-[#555555] font-mono ml-auto">{trader.address.slice(0, 6)}...{trader.address.slice(-4)}</span>
                         </div>
-                        <span className="text-[#3b82f6] font-mono ml-2">{w.slice(0, 6)}...{w.slice(-4)}</span>
-                        <span className="text-[#555555] ml-auto">No trades yet</span>
-                        <button onClick={() => setTrackedWallets((prev) => prev.filter((_, j) => j !== i))}
-                          className="text-[#f6465d] ml-2 hover:text-red-400 text-xs">×</button>
+                        {trades.length === 0 ? (
+                          <div className="px-3 py-2 text-[10px] text-[#555555]">Loading trades...</div>
+                        ) : (
+                          trades.slice(0, 3).map((t: any, i: number) => {
+                            const side = t.side || (parseFloat(t.price || 0) > 0.5 ? "BUY" : "SELL");
+                            const ts = parseInt(t.timestamp || t.matchTime || "0");
+                            const age = ts ? Math.floor(Date.now() / 1000) - Math.floor(ts / 1000) : 0;
+                            const ageStr = age < 60 ? `${age}s` : age < 3600 ? `${Math.floor(age / 60)}m` : age < 86400 ? `${Math.floor(age / 3600)}h` : `${Math.floor(age / 86400)}d`;
+                            return (
+                              <div key={i} className="flex items-center px-3 py-1 text-[10px] border-b border-[#1a1a1a]/20 last:border-0">
+                                <span className={`font-bold w-7 ${side === "BUY" ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{side}</span>
+                                <span className="text-[#e5e5e5] tabular-nums">{parseFloat(t.size || 0).toFixed(0)}</span>
+                                <span className="text-[#555555] mx-1">@</span>
+                                <span className="text-[#e5e5e5] tabular-nums">{(parseFloat(t.price || 0) * 100).toFixed(1)}¢</span>
+                                <span className="text-[#555555] ml-auto">{ageStr}</span>
+                              </div>
+                            );
+                          })
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>

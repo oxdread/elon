@@ -83,7 +83,7 @@ export default function TweetHeatmap({ heatmapFrom, heatmapTo, compact }: { heat
               <td className="text-right pr-2 text-neutral-500 font-medium">{String(hour).padStart(2, "0")}:00</td>
               {row.map((val, dayIdx) => (
                 <td key={dayIdx}
-                  className={`text-center ${cellBg(val, dayIdx, hour)} ${hour === nowHour && dayIdx === nowDayIdx ? "ring-1 ring-amber-500" : ""}`}
+                  className={`text-center ${cellBg(val, dayIdx, hour)} ${hour === nowHour && dayIdx === nowDayIdx ? "ring-1 ring-amber-400 animate-pulse" : ""}`}
                   style={{ padding: cellPad }}>
                   <span className={val > 0 ? "text-white font-bold" : "text-neutral-500"}>{val}</span>
                 </td>
