@@ -90,7 +90,7 @@ export default function TweetsPage() {
         {/* Top bar */}
         <div className="flex gap-2 shrink-0">
           {/* Analytics — matches left(38%) + middle(30%) */}
-          <div style={{ width: "calc(58% + 4px)" }} className="shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-4 py-3">
+          <div style={{ width: "calc(63% + 4px)" }} className="shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-4 py-3">
             <div className="flex items-center gap-3">
               <select value={selectedEvent || ""} onChange={(e) => setSelectedEvent(e.target.value)}
                 className="bg-[#111] border border-[#1a1a1a]/50 rounded-lg px-3 py-2 text-sm font-bold text-[#e5e5e5] cursor-pointer shrink-0">
@@ -122,11 +122,11 @@ export default function TweetsPage() {
         <div className="flex-1 flex gap-2 min-h-0">
 
           {/* Left: Tweets Activity */}
-          <div className="w-[28%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">            <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0 flex items-center justify-between">
+          <div className="w-[33%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">            <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0 flex items-center justify-between">
               <span className="text-xs font-bold text-[#e5e5e5]">Tweets Activity</span>
               <span className="text-[10px] text-[#555555]">Last 7 days (ET)</span>
             </div>
-            <div className="flex-1 p-1 overflow-hidden flex flex-col">
+            <div className="flex-1 p-1 overflow-y-auto flex flex-col">
               <TweetHeatmap heatmapFrom={fromDate} heatmapTo={toDate} compact />
             </div>
           </div>
