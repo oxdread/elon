@@ -144,25 +144,27 @@ export default function TradingPanel({
       <div className="flex shrink-0">
         <button onClick={() => handleOutcomeChange("yes")}
           className={`flex-1 py-2 text-sm font-bold transition-all ${
-            isYes ? "text-[#0ecb81] bg-[#0d0d0d] rounded-t-lg border border-[#1a1a1a] border-b-0"
+            isYes ? "text-[#0ecb81] rounded-t-lg border border-[#1a1a1a] border-b-0"
               : "text-[#555555] hover:text-[#808080] border-b border-[#1a1a1a]"
-          }`}>
+          }`}
+          style={isYes ? { background: "linear-gradient(180deg, rgba(14,203,129,0.12) 0%, rgba(14,203,129,0.04) 100%)" } : {}}>
           Yes {yesAsk != null ? `${yesAsk.toFixed(1)}¢` : ""}
         </button>
         <button onClick={() => handleOutcomeChange("no")}
           className={`flex-1 py-2 text-sm font-bold transition-all ${
-            !isYes ? "text-[#f6465d] bg-[#0d0d0d] rounded-t-lg border border-[#1a1a1a] border-b-0"
+            !isYes ? "text-[#f6465d] rounded-t-lg border border-[#1a1a1a] border-b-0"
               : "text-[#555555] hover:text-[#808080] border-b border-[#1a1a1a]"
-          }`}>
+          }`}
+          style={!isYes ? { background: "linear-gradient(180deg, rgba(246,70,93,0.12) 0%, rgba(246,70,93,0.04) 100%)" } : {}}>
           No {noAsk != null ? `${noAsk.toFixed(1)}¢` : ""}
         </button>
       </div>
 
-      {/* Content — gradient from tab */}
+      {/* Content — gradient continues from tab */}
       <div className="flex flex-col px-3 pb-3 gap-2.5 border-x border-b border-[#1a1a1a] rounded-b-lg"
         style={{ background: isYes
-          ? "linear-gradient(180deg, rgba(14,203,129,0.08) 0%, #0d0d0d 35%)"
-          : "linear-gradient(180deg, rgba(246,70,93,0.08) 0%, #0d0d0d 35%)"
+          ? "linear-gradient(180deg, rgba(14,203,129,0.04) 0%, #0d0d0d 25%)"
+          : "linear-gradient(180deg, rgba(246,70,93,0.04) 0%, #0d0d0d 25%)"
         }}>
 
         {/* Your shares card */}
