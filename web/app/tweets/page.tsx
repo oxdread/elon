@@ -1,40 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import EventTabs from "../components/EventTabs";
+import { shortSlug, eventDurationDays } from "../components/EventTabs";
 import TweetHeatmap from "../components/TweetHeatmap";
 
 type Event = { id: string; slug: string; title: string; start_date: string; end_date: string };
-type Tweet = {
-  id: string; ts: number; text: string;
-  prices: { label: string; mid: number | null }[];
-};
-
-function defaultRange(): [string, string] {
-  const now = new Date();
-  const et = new Date(now.getTime() - 4 * 3600 * 1000);
-  return [
-    new Date(et.getTime() - 6 * 86400 * 1000).toISOString().slice(0, 10),
-    et.toISOString().slice(0, 10),
-  ];
-}
+type Tweet = { id: string; ts: number; text: string };
 
 export default function TweetsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [tweetCounts, setTweetCounts] = useState<Record<string, number>>({});
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [tweets, setTweets] = useState<Tweet[]>([]);
-  const [heatmapFrom, setHeatmapFrom] = useState("");
-  const [heatmapTo, setHeatmapTo] = useState("");
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState(0);
+  const [trackedWallets, setTrackedWallets] = useState<string[]>([]);
+  const [walletInput, setWalletInput] = useState("");
 
   useEffect(() => {
     setMounted(true);
     setNow(Math.floor(Date.now() / 1000));
-    const [f, t] = defaultRange();
-    setHeatmapFrom(f);
-    setHeatmapTo(t);
     const id = setInterval(() => setNow(Math.floor(Date.now() / 1000)), 1000);
     return () => clearInterval(id);
   }, []);
@@ -59,7 +44,7 @@ export default function TweetsPage() {
   useEffect(() => {
     const tick = async () => {
       try {
-        const r = await fetch("/api/tweets?limit=100", { cache: "no-store" });
+        const r = await fetch("/api/tweets?limit=50", { cache: "no-store" });
         const d = await r.json();
         if (!d.error) setTweets(d.tweets ?? []);
       } catch {}
@@ -69,76 +54,162 @@ export default function TweetsPage() {
     return () => clearInterval(id);
   }, []);
 
-  if (!mounted) return <div className="p-4 text-neutral-500">Loading...</div>;
+  if (!mounted) return <div className="p-4 text-[#555555]">Loading...</div>;
+
+  const selectedEv = events.find((e) => e.id === selectedEvent);
+  const currentCount = selectedEvent ? (tweetCounts[selectedEvent] ?? 0) : 0;
+
+  // Calculate stats
+  let daysElapsed = 0;
+  if (selectedEv?.start_date) {
+    daysElapsed = Math.max(1, (now - Math.floor(new Date(selectedEv.start_date).getTime() / 1000)) / 86400);
+  }
+  const dailyAvg = daysElapsed > 0 ? (currentCount / daysElapsed).toFixed(1) : "0";
+  const hourlyAvg = daysElapsed > 0 ? (currentCount / (daysElapsed * 24)).toFixed(1) : "0";
+
+  let timerStr = "";
+  if (selectedEv?.end_date) {
+    const remaining = Math.floor(new Date(selectedEv.end_date).getTime() / 1000) - now;
+    if (remaining <= 0) timerStr = "ENDED";
+    else {
+      const d = Math.floor(remaining / 86400), h = Math.floor((remaining % 86400) / 3600), m = Math.floor((remaining % 3600) / 60);
+      timerStr = (d > 0 ? `${d}d ` : "") + `${h}h ${m}m`;
+    }
+  }
+
+  // Heatmap date range — last 7 days
+  const toDate = new Date().toISOString().slice(0, 10);
+  const fromDate = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
 
   return (
-    <div className="flex flex-col h-full overflow-auto">
-      {/* Event tabs */}
-      <div className="px-4 py-3 border-b border-neutral-800/60">
-        <EventTabs events={events} selectedEvent={selectedEvent} onSelect={setSelectedEvent} tweetCounts={tweetCounts} now={now} />
+    <div className="flex flex-col h-full bg-[#060606]">
+      {/* Event selector — compact */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-[#1a1a1a] shrink-0 overflow-x-auto">
+        {events.map((ev) => (
+          <button key={ev.id} onClick={() => setSelectedEvent(ev.id)}
+            className={`px-3 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors ${
+              selectedEvent === ev.id ? "bg-[#1a1a1a] text-[#e5e5e5]" : "text-[#555555] hover:text-[#808080]"
+            }`}>
+            {shortSlug(ev.slug)} ({eventDurationDays(ev) >= 5 ? "7d" : "2d"})
+          </button>
+        ))}
       </div>
 
-      <div className="flex-1 p-4 space-y-4">
-        {/* Heatmap */}
-        <section className="rounded-xl border border-neutral-800/60 bg-neutral-900/30 p-3">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-[10px] uppercase tracking-wider text-neutral-500">
-              Tweets Per Hour <span className="text-neutral-600">(ET)</span>
-            </h2>
-            <div className="flex items-center gap-2">
-              <input type="date" value={heatmapFrom} onChange={(e) => setHeatmapFrom(e.target.value)}
-                className="bg-neutral-800 border border-neutral-700 rounded px-1.5 py-0.5 text-[10px] text-neutral-300 w-[110px]" />
-              <span className="text-neutral-600 text-[10px]">to</span>
-              <input type="date" value={heatmapTo} onChange={(e) => setHeatmapTo(e.target.value)}
-                className="bg-neutral-800 border border-neutral-700 rounded px-1.5 py-0.5 text-[10px] text-neutral-300 w-[110px]" />
-            </div>
+      {/* Main content */}
+      <div className="flex-1 flex min-h-0 gap-2 p-2">
+        {/* Left: Stats + Heatmap (40%) */}
+        <div className="w-[40%] flex flex-col gap-2 shrink-0">
+          {/* Stats cards */}
+          <div className="grid grid-cols-2 gap-1.5">
+            <StatCard label="Tweets" value={String(currentCount)} color="text-[#3b82f6]" />
+            <StatCard label="Daily Avg" value={dailyAvg} color="text-[#0ecb81]" />
+            <StatCard label="Per Hour" value={hourlyAvg} color="text-[#fbbf24]" />
+            <StatCard label="Ends" value={timerStr || "—"} color={timerStr === "ENDED" ? "text-[#f6465d]" : "text-[#808080]"} />
           </div>
-          {heatmapFrom && heatmapTo && <TweetHeatmap heatmapFrom={heatmapFrom} heatmapTo={heatmapTo} />}
-        </section>
 
-        {/* Tweet Log */}
-        <section className="rounded-xl border border-neutral-800/60 bg-neutral-900/30 p-3">
-          <h2 className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2">Tweet Log</h2>
-          {tweets.length === 0 ? (
-            <p className="text-neutral-600 text-xs">No tweets recorded yet.</p>
-          ) : (
-            <div className="space-y-1">
-              {tweets.map((t, idx) => (
-                <TweetRow key={t.id} tweet={t} number={tweets.length - idx} />
-              ))}
+          {/* Active bracket */}
+          {selectedEv && (
+            <div className="bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-3 py-2">
+              <div className="text-[10px] text-[#555555] mb-0.5">Event</div>
+              <div className="text-xs font-bold text-[#e5e5e5]">{shortSlug(selectedEv.slug)}</div>
             </div>
           )}
-        </section>
+
+          {/* Heatmap — compact */}
+          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] p-2 overflow-auto min-h-0">
+            <div className="text-[10px] text-[#555555] uppercase tracking-wider mb-1.5">Tweets Per Hour (ET)</div>
+            <TweetHeatmap heatmapFrom={fromDate} heatmapTo={toDate} />
+          </div>
+        </div>
+
+        {/* Right: Post History + Top Traders (60%) */}
+        <div className="flex-1 flex flex-col gap-2 min-w-0">
+          {/* Post History */}
+          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden flex flex-col min-h-0">
+            <div className="px-3 py-1.5 border-b border-[#1a1a1a] shrink-0">
+              <span className="text-[10px] text-[#555555] uppercase tracking-wider">Post History</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-1.5">
+              {tweets.length === 0 ? (
+                <div className="p-3 text-[#555555] text-xs">No tweets yet</div>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  {tweets.map((t) => {
+                    const age = now - t.ts;
+                    const ageStr = age < 60 ? `${age}s` : age < 3600 ? `${Math.floor(age / 60)}m` : age < 86400 ? `${Math.floor(age / 3600)}h` : `${Math.floor(age / 86400)}d`;
+                    return (
+                      <div key={t.id} className="flex gap-2 px-2.5 py-2 rounded-lg bg-[#111111] border border-[#1a1a1a]/50 hover:bg-[#141414] transition-colors">
+                        <div className="w-7 h-7 rounded-full bg-[#1a1a1a] shrink-0 overflow-hidden">
+                          <img src="/elon.jpg" alt="" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-[11px] font-bold text-[#e5e5e5]">Elon Musk</span>
+                            <span className="text-[10px] text-[#555555] ml-auto">{ageStr} ago</span>
+                          </div>
+                          <p className="text-[11px] text-[#b0b0b0] leading-relaxed break-words">{t.text}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Top Traders — shell */}
+          <div className="h-48 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden flex flex-col shrink-0">
+            <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#1a1a1a] shrink-0">
+              <span className="text-[10px] text-[#555555] uppercase tracking-wider">Top Traders</span>
+            </div>
+            <div className="px-3 py-2 border-b border-[#1a1a1a]/40 shrink-0">
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={walletInput}
+                  onChange={(e) => setWalletInput(e.target.value)}
+                  placeholder="0x... wallet address"
+                  className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a]/50 rounded-md px-2 py-1 text-[11px] text-[#e5e5e5] focus:outline-none focus:border-[#3b82f6]/50"
+                />
+                <button onClick={() => {
+                  if (walletInput.trim() && !trackedWallets.includes(walletInput.trim())) {
+                    setTrackedWallets((prev) => [...prev, walletInput.trim()]);
+                    setWalletInput("");
+                  }
+                }}
+                  className="px-2.5 py-1 rounded-md text-[10px] font-medium bg-[#3b82f6] text-white hover:bg-blue-500 transition-colors">
+                  Track
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {trackedWallets.length === 0 ? (
+                <div className="p-3 text-[#555555] text-xs text-center">Add wallet addresses to track their trades</div>
+              ) : (
+                <div className="p-1.5 flex flex-col gap-1">
+                  {trackedWallets.map((w, i) => (
+                    <div key={i} className="flex items-center px-2.5 py-1.5 rounded-md bg-[#111111] border border-[#1a1a1a]/50 text-[11px]">
+                      <span className="text-[#3b82f6] font-mono">{w.slice(0, 6)}...{w.slice(-4)}</span>
+                      <span className="text-[#555555] ml-auto">No trades yet</span>
+                      <button onClick={() => setTrackedWallets((prev) => prev.filter((_, j) => j !== i))}
+                        className="text-[#f6465d] ml-2 text-[9px] hover:text-red-400">x</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-function TweetRow({ tweet, number }: { tweet: Tweet; number: number }) {
-  const [expanded, setExpanded] = useState(false);
+function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div className="border border-neutral-800/40 rounded px-2.5 py-1.5 hover:bg-neutral-800/20 cursor-pointer transition-colors"
-      onClick={() => setExpanded(!expanded)}>
-      <div className="flex items-center gap-2">
-        <span className="text-blue-400 font-bold text-[10px] shrink-0 w-6">#{number}</span>
-        <span className="text-neutral-600 text-[10px] shrink-0 w-16">{new Date(tweet.ts * 1000).toLocaleTimeString()}</span>
-        <p className="text-neutral-300 text-xs truncate flex-1">{tweet.text}</p>
-      </div>
-      {expanded && (
-        <div className="mt-1.5 pl-8">
-          <p className="text-neutral-400 text-xs break-words mb-1">{tweet.text}</p>
-          {tweet.prices.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {tweet.prices.map((p) => (
-                <span key={p.label} className="text-[10px] bg-neutral-800/60 px-1.5 py-0.5 rounded">
-                  <span className="text-neutral-500">{p.label}:</span>{" "}
-                  <span className="text-neutral-200 font-bold">{p.mid != null ? (p.mid * 100).toFixed(1) + "%" : "—"}</span>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+    <div className="bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-3 py-2">
+      <div className="text-[9px] text-[#555555] uppercase tracking-wider">{label}</div>
+      <div className={`text-lg font-bold tabular-nums ${color}`}>{value}</div>
     </div>
   );
 }
