@@ -87,10 +87,10 @@ export default function TweetsPage() {
   return (
     <div className="h-full bg-[#060606] flex flex-col p-2 gap-2 overflow-hidden">
 
-        {/* Top bar: Analytics + Donation */}
+        {/* Top bar: Analytics spans left+middle, Donation spans right */}
         <div className="flex gap-2 shrink-0">
-          {/* Tweet Analytics */}
-          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-4 py-3">
+          {/* Tweet Analytics — spans 35% + 30% */}
+          <div className="w-[65%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-4 py-3">
             <div className="flex items-center gap-4">
               <select value={selectedEvent || ""} onChange={(e) => setSelectedEvent(e.target.value)}
                 className="bg-[#111] border border-[#1a1a1a]/50 rounded-lg px-3 py-1.5 text-sm font-bold text-[#e5e5e5] cursor-pointer shrink-0">
@@ -109,8 +109,8 @@ export default function TweetsPage() {
             </div>
           </div>
 
-          {/* Donation bar */}
-          <div className="w-64 shrink-0 bg-gradient-to-r from-[#0d0d0d] to-[#3b82f6]/5 rounded-lg border border-[#1a1a1a] px-3 py-2.5 flex flex-col justify-center">
+          {/* Donation bar — same width as right column */}
+          <div className="flex-1 bg-gradient-to-r from-[#0d0d0d] to-[#3b82f6]/5 rounded-lg border border-[#1a1a1a] px-3 py-2.5 flex flex-col justify-center">
             <div className="text-[11px] font-bold text-[#e5e5e5] mb-1">Support This Project</div>
             <div className="flex items-center gap-1.5">
               <div className="flex-1 bg-[#0a0a0a] rounded-md px-2 py-1 text-[9px] text-[#555555] font-mono truncate border border-[#1a1a1a]/50">
