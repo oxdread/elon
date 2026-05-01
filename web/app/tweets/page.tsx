@@ -86,150 +86,190 @@ export default function TweetsPage() {
 
   return (
     <div className="h-full overflow-y-auto bg-[#060606]">
-      <div className="p-3 space-y-3">
+      <div className="p-2 space-y-2 min-h-full">
 
-        {/* Row 1: Stats + Event dropdown (single panel) */}
-        <div className="bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] p-3">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] text-[#555555] uppercase tracking-wider">Tweet Analytics</span>
-            <select value={selectedEvent || ""} onChange={(e) => setSelectedEvent(e.target.value)}
-              className="bg-[#111] border border-[#1a1a1a]/50 rounded-md px-2.5 py-1 text-[11px] text-[#e5e5e5] focus:outline-none cursor-pointer">
-              {events.map((ev) => (
-                <option key={ev.id} value={ev.id} className="bg-[#0d0d0d]">
-                  {shortSlug(ev.slug)} ({eventDurationDays(ev) >= 5 ? "7d" : "2d"})
-                </option>
-              ))}
-            </select>
+        {/* Top bar: Analytics + Donation */}
+        <div className="flex gap-2">
+          {/* Tweet Analytics with event dropdown */}
+          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-4 py-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-[#e5e5e5]">Tweet Analytics</span>
+              <select value={selectedEvent || ""} onChange={(e) => setSelectedEvent(e.target.value)}
+                className="bg-[#111] border border-[#1a1a1a]/50 rounded-md px-2 py-1 text-[11px] text-[#e5e5e5] cursor-pointer">
+                {events.map((ev) => (
+                  <option key={ev.id} value={ev.id} className="bg-[#0d0d0d]">
+                    {shortSlug(ev.slug)} ({eventDurationDays(ev) >= 5 ? "7d" : "2d"})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-6">
+              <Stat label="Total" value={String(currentCount)} color="text-[#3b82f6]" />
+              <Stat label="Daily" value={dailyAvg} color="text-[#0ecb81]" />
+              <Stat label="/Hour" value={hourlyAvg} color="text-[#fbbf24]" />
+              <Stat label="Ends" value={timerStr || "—"} color={timerStr === "ENDED" ? "text-[#f6465d]" : "text-[#808080]"} />
+            </div>
           </div>
-          <div className="grid grid-cols-4 gap-2">
-            <div>
-              <div className="text-[9px] text-[#555555] uppercase">Total</div>
-              <div className="text-2xl font-bold text-[#3b82f6] tabular-nums">{currentCount}</div>
-            </div>
-            <div>
-              <div className="text-[9px] text-[#555555] uppercase">Daily Avg</div>
-              <div className="text-2xl font-bold text-[#0ecb81] tabular-nums">{dailyAvg}</div>
-            </div>
-            <div>
-              <div className="text-[9px] text-[#555555] uppercase">Per Hour</div>
-              <div className="text-2xl font-bold text-[#fbbf24] tabular-nums">{hourlyAvg}</div>
-            </div>
-            <div>
-              <div className="text-[9px] text-[#555555] uppercase">Ends</div>
-              <div className={`text-2xl font-bold tabular-nums ${timerStr === "ENDED" ? "text-[#f6465d]" : "text-[#808080]"}`}>{timerStr || "—"}</div>
+
+          {/* Donation bar */}
+          <div className="w-72 shrink-0 bg-gradient-to-r from-[#0d0d0d] to-[#3b82f6]/5 rounded-lg border border-[#1a1a1a] px-4 py-3 flex flex-col justify-center">
+            <div className="text-xs font-bold text-[#e5e5e5] mb-1">Support This Project</div>
+            <div className="text-[10px] text-[#808080] mb-2">Help us keep the servers running and build new features</div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-[#0a0a0a] rounded-md px-2 py-1 text-[10px] text-[#555555] font-mono truncate border border-[#1a1a1a]/50">
+                0x...donate address
+              </div>
+              <button className="px-3 py-1 rounded-md text-[10px] font-bold bg-[#3b82f6] text-white hover:bg-blue-500 transition-colors shrink-0">
+                Copy
+              </button>
             </div>
           </div>
         </div>
 
-        {/* Row 2: Heatmap + Post History */}
-        <div className="flex gap-3">
-          {/* Heatmap — 40% */}
-          <div className="w-[40%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] p-3">
-            <div className="text-[11px] text-[#555555] uppercase tracking-wider mb-2">
-              Tweet Activity <span className="text-[#333]">(ET)</span>
+        {/* Main 3-column layout */}
+        <div className="flex gap-2" style={{ minHeight: "calc(100vh - 160px)" }}>
+
+          {/* Left: Tweets Activity (full height) */}
+          <div className="w-[35%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
+            <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0 flex items-center justify-between">
+              <span className="text-xs font-bold text-[#e5e5e5]">Tweets Activity</span>
+              <span className="text-[10px] text-[#555555]">Last 7 days (ET)</span>
             </div>
-            <TweetHeatmap heatmapFrom={fromDate} heatmapTo={toDate} />
+            <div className="flex-1 overflow-auto p-2">
+              <TweetHeatmap heatmapFrom={fromDate} heatmapTo={toDate} />
+            </div>
           </div>
 
-          {/* Post History — 60% */}
-          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden">
-            <div className="px-3 py-1.5 border-b border-[#1a1a1a]">
-              <span className="text-[11px] text-[#555555] uppercase tracking-wider">Post History</span>
-            </div>
-            <div className="max-h-[400px] overflow-y-auto p-1.5">
-              {tweets.length === 0 ? (
-                <div className="p-3 text-[#555555] text-xs">No tweets yet</div>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  {tweets.map((t) => {
-                    const age = now - t.ts;
-                    const ageStr = age < 60 ? `${age}s` : age < 3600 ? `${Math.floor(age / 60)}m` : age < 86400 ? `${Math.floor(age / 3600)}h` : `${Math.floor(age / 86400)}d`;
-                    return (
-                      <div key={t.id} className="flex gap-2 px-2.5 py-2 rounded-lg bg-[#111111] border border-[#1a1a1a]/50 hover:bg-[#141414] transition-colors">
-                        <div className="w-7 h-7 rounded-full bg-[#1a1a1a] shrink-0 overflow-hidden">
-                          <img src="/elon.jpg" alt="" className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className="text-[11px] font-bold text-[#e5e5e5]">Elon Musk</span>
-                            <span className="text-[10px] text-[#555555] ml-auto">{ageStr} ago</span>
+          {/* Middle: Post History + Wallet Tracker */}
+          <div className="flex-1 flex flex-col gap-2 min-w-0">
+            {/* Elon Post History — 60% */}
+            <div className="flex-[3] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
+              <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0 flex items-center justify-between">
+                <span className="text-xs font-bold text-[#e5e5e5]">Elon Post History</span>
+                <span className="text-[10px] text-[#555555]">{tweets.length} posts</span>
+              </div>
+              <div className="flex-1 overflow-y-auto p-1.5">
+                {tweets.length === 0 ? (
+                  <div className="p-4 text-[#555555] text-xs text-center">No tweets yet</div>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {tweets.map((t) => {
+                      const age = now - t.ts;
+                      const ageStr = age < 60 ? `${age}s` : age < 3600 ? `${Math.floor(age / 60)}m` : age < 86400 ? `${Math.floor(age / 3600)}h` : `${Math.floor(age / 86400)}d`;
+                      return (
+                        <div key={t.id} className="flex gap-2.5 px-3 py-2 rounded-lg bg-[#111111] border border-[#1a1a1a]/40 hover:bg-[#141414] transition-colors">
+                          <div className="w-8 h-8 rounded-full bg-[#1a1a1a] shrink-0 overflow-hidden">
+                            <img src="/elon.jpg" alt="" className="w-full h-full object-cover" />
                           </div>
-                          <p className="text-[11px] text-[#b0b0b0] leading-relaxed break-words">{t.text}</p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-xs font-bold text-[#e5e5e5]">Elon Musk</span>
+                              <span className="text-[10px] text-[#555555] ml-auto">{ageStr} ago</span>
+                            </div>
+                            <p className="text-[11px] text-[#b0b0b0] leading-relaxed break-words">{t.text}</p>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Row 3: Top Traders + Comments + Flight */}
-        <div className="flex gap-3">
-          {/* Top Traders */}
-          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden">
-            <div className="px-3 py-1.5 border-b border-[#1a1a1a]">
-              <span className="text-[11px] text-[#555555] uppercase tracking-wider">Top Traders</span>
-            </div>
-            <div className="px-3 py-2 border-b border-[#1a1a1a]/40">
-              <div className="flex gap-1.5">
-                <input type="text" value={walletInput} onChange={(e) => setWalletInput(e.target.value)}
-                  placeholder="0x... wallet address"
-                  className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a]/50 rounded-md px-2 py-1 text-[11px] text-[#e5e5e5] focus:outline-none focus:border-[#3b82f6]/50" />
-                <button onClick={() => {
-                  if (walletInput.trim() && !trackedWallets.includes(walletInput.trim())) {
-                    setTrackedWallets((prev) => [...prev, walletInput.trim()]);
-                    setWalletInput("");
-                  }
-                }} className="px-2.5 py-1 rounded-md text-[10px] font-medium bg-[#3b82f6] text-white hover:bg-blue-500 transition-colors">
-                  Track
-                </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
-            <div className="max-h-[200px] overflow-y-auto">
-              {trackedWallets.length === 0 ? (
-                <div className="p-4 text-[#555555] text-xs text-center">Add wallet addresses to track</div>
-              ) : (
-                <div className="p-1.5 flex flex-col gap-1">
-                  {trackedWallets.map((w, i) => (
-                    <div key={i} className="flex items-center px-2.5 py-1.5 rounded-md bg-[#111111] border border-[#1a1a1a]/50 text-[11px]">
-                      <span className="text-[#3b82f6] font-mono">{w.slice(0, 6)}...{w.slice(-4)}</span>
-                      <span className="text-[#555555] ml-auto">No trades yet</span>
-                      <button onClick={() => setTrackedWallets((prev) => prev.filter((_, j) => j !== i))}
-                        className="text-[#f6465d] ml-2 text-[9px] hover:text-red-400">x</button>
-                    </div>
-                  ))}
+
+            {/* Top Wallet Tracker — 40% */}
+            <div className="flex-[2] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
+              <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
+                <span className="text-xs font-bold text-[#e5e5e5]">Top Wallet Tracker</span>
+              </div>
+              <div className="px-3 py-2 border-b border-[#1a1a1a]/40 shrink-0">
+                <div className="flex gap-1.5">
+                  <input type="text" value={walletInput} onChange={(e) => setWalletInput(e.target.value)}
+                    placeholder="0x... wallet address"
+                    className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a]/50 rounded-md px-2.5 py-1.5 text-[11px] text-[#e5e5e5] font-mono focus:outline-none focus:border-[#3b82f6]/50" />
+                  <button onClick={() => {
+                    if (walletInput.trim() && !trackedWallets.includes(walletInput.trim())) {
+                      setTrackedWallets((prev) => [...prev, walletInput.trim()]);
+                      setWalletInput("");
+                    }
+                  }} className="px-3 py-1.5 rounded-md text-[10px] font-bold bg-[#3b82f6] text-white hover:bg-blue-500 transition-colors shrink-0">
+                    Track
+                  </button>
                 </div>
-              )}
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {trackedWallets.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-[#555555] text-xs">
+                    Add wallet addresses to track their trades
+                  </div>
+                ) : (
+                  <div className="p-1.5 flex flex-col gap-1">
+                    {trackedWallets.map((w, i) => (
+                      <div key={i} className="flex items-center px-3 py-2 rounded-lg bg-[#111111] border border-[#1a1a1a]/40 text-[11px]">
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#3b82f6]/30 to-[#0ecb81]/30 flex items-center justify-center text-[9px] font-bold text-[#808080] shrink-0">
+                          {i + 1}
+                        </div>
+                        <span className="text-[#3b82f6] font-mono ml-2">{w.slice(0, 6)}...{w.slice(-4)}</span>
+                        <span className="text-[#555555] ml-auto">No trades yet</span>
+                        <button onClick={() => setTrackedWallets((prev) => prev.filter((_, j) => j !== i))}
+                          className="text-[#f6465d] ml-2 hover:text-red-400 text-xs">×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Comments */}
-          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden">
-            <div className="px-3 py-1.5 border-b border-[#1a1a1a]">
-              <span className="text-[11px] text-[#555555] uppercase tracking-wider">Polymarket Comments</span>
+          {/* Right: Comments + News + Flight (3 stacked) */}
+          <div className="w-72 shrink-0 flex flex-col gap-2">
+            {/* Polymarket Comments */}
+            <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
+              <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
+                <span className="text-xs font-bold text-[#e5e5e5]">Polymarket Comments</span>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                <Comments initialData={commentsData as any} />
+              </div>
             </div>
-            <div className="max-h-[200px] overflow-y-auto">
-              <Comments initialData={commentsData as any} />
-            </div>
-          </div>
 
-          {/* Flight — shell */}
-          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden">
-            <div className="px-3 py-1.5 border-b border-[#1a1a1a]">
-              <span className="text-[11px] text-[#555555] uppercase tracking-wider">Elon Flight Tracker</span>
+            {/* Elon News */}
+            <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
+              <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
+                <span className="text-xs font-bold text-[#e5e5e5]">Elon News</span>
+              </div>
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-2xl mb-1 text-[#1a1a1a]">&#128240;</div>
+                  <div className="text-[11px] text-[#555555]">Coming soon</div>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center justify-center h-[200px] text-[#333]">
-              <div className="text-center">
-                <div className="text-3xl mb-1">&#9992;</div>
-                <div className="text-[11px] text-[#555555]">Coming soon</div>
+
+            {/* Flight Tracker */}
+            <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
+              <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
+                <span className="text-xs font-bold text-[#e5e5e5]">Flight Tracker</span>
+              </div>
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-2xl mb-1 text-[#1a1a1a]">&#9992;</div>
+                  <div className="text-[11px] text-[#555555]">Coming soon</div>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
       </div>
+    </div>
+  );
+}
+
+function Stat({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div>
+      <div className="text-[9px] text-[#555555] uppercase tracking-wider">{label}</div>
+      <div className={`text-xl font-bold tabular-nums ${color}`}>{value}</div>
     </div>
   );
 }
