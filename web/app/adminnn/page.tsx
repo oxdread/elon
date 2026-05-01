@@ -3,6 +3,17 @@
 import { useState, useEffect } from "react";
 
 export default function AdminPage() {
+  // Hide sidebar + header for this page
+  useEffect(() => {
+    const sidebar = document.querySelector("aside");
+    const header = document.querySelector("header");
+    if (sidebar) sidebar.style.display = "none";
+    if (header) header.style.display = "none";
+    return () => {
+      if (sidebar) sidebar.style.display = "";
+      if (header) header.style.display = "";
+    };
+  }, []);
   const [authed, setAuthed] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
