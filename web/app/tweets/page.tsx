@@ -126,8 +126,8 @@ export default function TweetsPage() {
           </div>
         </div>
 
-        {/* Main 3-column layout */}
-        <div className="flex gap-2" style={{ minHeight: "calc(100vh - 160px)" }}>
+        {/* Main 3-column layout — fill viewport */}
+        <div className="flex gap-2" style={{ height: "calc(100vh - 130px)" }}>
 
           {/* Left: Tweets Activity (full height) */}
           <div className="w-[35%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
@@ -142,8 +142,8 @@ export default function TweetsPage() {
 
           {/* Middle: Post History + Wallet Tracker */}
           <div className="flex-1 flex flex-col gap-2 min-w-0">
-            {/* Elon Post History — 60% */}
-            <div className="flex-[3] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
+            {/* Elon Post History — 55% */}
+            <div className="h-[55%] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0 flex items-center justify-between">
                 <span className="text-xs font-bold text-[#e5e5e5]">Elon Post History</span>
                 <span className="text-[10px] text-[#555555]">{tweets.length} posts</span>
@@ -176,8 +176,8 @@ export default function TweetsPage() {
               </div>
             </div>
 
-            {/* Top Wallet Tracker — 40% */}
-            <div className="flex-[2] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
+            {/* Top Wallet Tracker — 45% */}
+            <div className="h-[45%] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
                 <span className="text-xs font-bold text-[#e5e5e5]">Top Wallet Tracker</span>
               </div>
@@ -223,7 +223,7 @@ export default function TweetsPage() {
           {/* Right: Comments + News + Flight (3 stacked) */}
           <div className="w-72 shrink-0 flex flex-col gap-2">
             {/* Polymarket Comments */}
-            <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
+            <div className="h-[33.3%] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
                 <span className="text-xs font-bold text-[#e5e5e5]">Polymarket Comments</span>
               </div>
@@ -233,7 +233,7 @@ export default function TweetsPage() {
             </div>
 
             {/* Elon News */}
-            <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
+            <div className="h-[33.3%] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
                 <span className="text-xs font-bold text-[#e5e5e5]">Elon News</span>
               </div>
@@ -246,7 +246,7 @@ export default function TweetsPage() {
             </div>
 
             {/* Flight Tracker */}
-            <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
+            <div className="h-[33.3%] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
                 <span className="text-xs font-bold text-[#e5e5e5]">Flight Tracker</span>
               </div>
