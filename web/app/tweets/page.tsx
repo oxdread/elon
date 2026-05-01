@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { shortSlug, eventDurationDays } from "../components/EventTabs";
 import TweetHeatmap from "../components/TweetHeatmap";
+import Comments from "../components/Comments";
 
 type Event = { id: string; slug: string; title: string; start_date: string; end_date: string };
 type Tweet = { id: string; ts: number; text: string };
@@ -12,6 +13,7 @@ export default function TweetsPage() {
   const [tweetCounts, setTweetCounts] = useState<Record<string, number>>({});
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [tweets, setTweets] = useState<Tweet[]>([]);
+  const [commentsData, setCommentsData] = useState<unknown[] | null>(null);
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState(0);
   const [trackedWallets, setTrackedWallets] = useState<string[]>([]);
@@ -44,9 +46,12 @@ export default function TweetsPage() {
   useEffect(() => {
     const tick = async () => {
       try {
-        const r = await fetch("/api/tweets?limit=50", { cache: "no-store" });
-        const d = await r.json();
-        if (!d.error) setTweets(d.tweets ?? []);
+        const [tRes, cRes] = await Promise.allSettled([
+          fetch("/api/tweets?limit=50", { cache: "no-store" }).then((r) => r.json()),
+          fetch("/api/comments?limit=30", { cache: "no-store" }).then((r) => r.json()),
+        ]);
+        if (tRes.status === "fulfilled" && !tRes.value.error) setTweets(tRes.value.tweets ?? []);
+        if (cRes.status === "fulfilled" && Array.isArray(cRes.value)) setCommentsData(cRes.value);
       } catch {}
     };
     tick();
@@ -59,7 +64,6 @@ export default function TweetsPage() {
   const selectedEv = events.find((e) => e.id === selectedEvent);
   const currentCount = selectedEvent ? (tweetCounts[selectedEvent] ?? 0) : 0;
 
-  // Calculate stats
   let daysElapsed = 0;
   if (selectedEv?.start_date) {
     daysElapsed = Math.max(1, (now - Math.floor(new Date(selectedEv.start_date).getTime() / 1000)) / 86400);
@@ -77,59 +81,62 @@ export default function TweetsPage() {
     }
   }
 
-  // Heatmap date range — last 7 days
   const toDate = new Date().toISOString().slice(0, 10);
   const fromDate = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
 
   return (
-    <div className="flex flex-col h-full bg-[#060606]">
-      {/* Event selector — compact */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-[#1a1a1a] shrink-0 overflow-x-auto">
-        {events.map((ev) => (
-          <button key={ev.id} onClick={() => setSelectedEvent(ev.id)}
-            className={`px-3 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-colors ${
-              selectedEvent === ev.id ? "bg-[#1a1a1a] text-[#e5e5e5]" : "text-[#555555] hover:text-[#808080]"
-            }`}>
-            {shortSlug(ev.slug)} ({eventDurationDays(ev) >= 5 ? "7d" : "2d"})
-          </button>
-        ))}
-      </div>
+    <div className="h-full overflow-y-auto bg-[#060606]">
+      <div className="p-3 space-y-3">
 
-      {/* Main content */}
-      <div className="flex-1 flex min-h-0 gap-2 p-2">
-        {/* Left: Stats + Heatmap (40%) */}
-        <div className="w-[40%] flex flex-col gap-2 shrink-0">
-          {/* Stats cards */}
-          <div className="grid grid-cols-2 gap-1.5">
-            <StatCard label="Tweets" value={String(currentCount)} color="text-[#3b82f6]" />
-            <StatCard label="Daily Avg" value={dailyAvg} color="text-[#0ecb81]" />
-            <StatCard label="Per Hour" value={hourlyAvg} color="text-[#fbbf24]" />
-            <StatCard label="Ends" value={timerStr || "—"} color={timerStr === "ENDED" ? "text-[#f6465d]" : "text-[#808080]"} />
+        {/* Row 1: Stats + Event dropdown (single panel) */}
+        <div className="bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] p-3">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] text-[#555555] uppercase tracking-wider">Tweet Analytics</span>
+            <select value={selectedEvent || ""} onChange={(e) => setSelectedEvent(e.target.value)}
+              className="bg-[#111] border border-[#1a1a1a]/50 rounded-md px-2.5 py-1 text-[11px] text-[#e5e5e5] focus:outline-none cursor-pointer">
+              {events.map((ev) => (
+                <option key={ev.id} value={ev.id} className="bg-[#0d0d0d]">
+                  {shortSlug(ev.slug)} ({eventDurationDays(ev) >= 5 ? "7d" : "2d"})
+                </option>
+              ))}
+            </select>
           </div>
-
-          {/* Active bracket */}
-          {selectedEv && (
-            <div className="bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-3 py-2">
-              <div className="text-[10px] text-[#555555] mb-0.5">Event</div>
-              <div className="text-xs font-bold text-[#e5e5e5]">{shortSlug(selectedEv.slug)}</div>
+          <div className="grid grid-cols-4 gap-2">
+            <div>
+              <div className="text-[9px] text-[#555555] uppercase">Total</div>
+              <div className="text-2xl font-bold text-[#3b82f6] tabular-nums">{currentCount}</div>
             </div>
-          )}
-
-          {/* Heatmap — compact */}
-          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] p-2 overflow-auto min-h-0">
-            <div className="text-[10px] text-[#555555] uppercase tracking-wider mb-1.5">Tweets Per Hour (ET)</div>
-            <TweetHeatmap heatmapFrom={fromDate} heatmapTo={toDate} />
+            <div>
+              <div className="text-[9px] text-[#555555] uppercase">Daily Avg</div>
+              <div className="text-2xl font-bold text-[#0ecb81] tabular-nums">{dailyAvg}</div>
+            </div>
+            <div>
+              <div className="text-[9px] text-[#555555] uppercase">Per Hour</div>
+              <div className="text-2xl font-bold text-[#fbbf24] tabular-nums">{hourlyAvg}</div>
+            </div>
+            <div>
+              <div className="text-[9px] text-[#555555] uppercase">Ends</div>
+              <div className={`text-2xl font-bold tabular-nums ${timerStr === "ENDED" ? "text-[#f6465d]" : "text-[#808080]"}`}>{timerStr || "—"}</div>
+            </div>
           </div>
         </div>
 
-        {/* Right: Post History + Top Traders (60%) */}
-        <div className="flex-1 flex flex-col gap-2 min-w-0">
-          {/* Post History */}
-          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden flex flex-col min-h-0">
-            <div className="px-3 py-1.5 border-b border-[#1a1a1a] shrink-0">
-              <span className="text-[10px] text-[#555555] uppercase tracking-wider">Post History</span>
+        {/* Row 2: Heatmap + Post History */}
+        <div className="flex gap-3">
+          {/* Heatmap — 40% */}
+          <div className="w-[40%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] p-3">
+            <div className="text-[11px] text-[#555555] uppercase tracking-wider mb-2">
+              Tweet Activity <span className="text-[#333]">(ET)</span>
             </div>
-            <div className="flex-1 overflow-y-auto p-1.5">
+            <TweetHeatmap heatmapFrom={fromDate} heatmapTo={toDate} />
+          </div>
+
+          {/* Post History — 60% */}
+          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden">
+            <div className="px-3 py-1.5 border-b border-[#1a1a1a]">
+              <span className="text-[11px] text-[#555555] uppercase tracking-wider">Post History</span>
+            </div>
+            <div className="max-h-[400px] overflow-y-auto p-1.5">
               {tweets.length === 0 ? (
                 <div className="p-3 text-[#555555] text-xs">No tweets yet</div>
               ) : (
@@ -156,35 +163,33 @@ export default function TweetsPage() {
               )}
             </div>
           </div>
+        </div>
 
-          {/* Top Traders — shell */}
-          <div className="h-48 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden flex flex-col shrink-0">
-            <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#1a1a1a] shrink-0">
-              <span className="text-[10px] text-[#555555] uppercase tracking-wider">Top Traders</span>
+        {/* Row 3: Top Traders + Comments + Flight */}
+        <div className="flex gap-3">
+          {/* Top Traders */}
+          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden">
+            <div className="px-3 py-1.5 border-b border-[#1a1a1a]">
+              <span className="text-[11px] text-[#555555] uppercase tracking-wider">Top Traders</span>
             </div>
-            <div className="px-3 py-2 border-b border-[#1a1a1a]/40 shrink-0">
+            <div className="px-3 py-2 border-b border-[#1a1a1a]/40">
               <div className="flex gap-1.5">
-                <input
-                  type="text"
-                  value={walletInput}
-                  onChange={(e) => setWalletInput(e.target.value)}
+                <input type="text" value={walletInput} onChange={(e) => setWalletInput(e.target.value)}
                   placeholder="0x... wallet address"
-                  className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a]/50 rounded-md px-2 py-1 text-[11px] text-[#e5e5e5] focus:outline-none focus:border-[#3b82f6]/50"
-                />
+                  className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a]/50 rounded-md px-2 py-1 text-[11px] text-[#e5e5e5] focus:outline-none focus:border-[#3b82f6]/50" />
                 <button onClick={() => {
                   if (walletInput.trim() && !trackedWallets.includes(walletInput.trim())) {
                     setTrackedWallets((prev) => [...prev, walletInput.trim()]);
                     setWalletInput("");
                   }
-                }}
-                  className="px-2.5 py-1 rounded-md text-[10px] font-medium bg-[#3b82f6] text-white hover:bg-blue-500 transition-colors">
+                }} className="px-2.5 py-1 rounded-md text-[10px] font-medium bg-[#3b82f6] text-white hover:bg-blue-500 transition-colors">
                   Track
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="max-h-[200px] overflow-y-auto">
               {trackedWallets.length === 0 ? (
-                <div className="p-3 text-[#555555] text-xs text-center">Add wallet addresses to track their trades</div>
+                <div className="p-4 text-[#555555] text-xs text-center">Add wallet addresses to track</div>
               ) : (
                 <div className="p-1.5 flex flex-col gap-1">
                   {trackedWallets.map((w, i) => (
@@ -199,17 +204,32 @@ export default function TweetsPage() {
               )}
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className="bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-3 py-2">
-      <div className="text-[9px] text-[#555555] uppercase tracking-wider">{label}</div>
-      <div className={`text-lg font-bold tabular-nums ${color}`}>{value}</div>
+          {/* Comments */}
+          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden">
+            <div className="px-3 py-1.5 border-b border-[#1a1a1a]">
+              <span className="text-[11px] text-[#555555] uppercase tracking-wider">Polymarket Comments</span>
+            </div>
+            <div className="max-h-[200px] overflow-y-auto">
+              <Comments initialData={commentsData as any} />
+            </div>
+          </div>
+
+          {/* Flight — shell */}
+          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-hidden">
+            <div className="px-3 py-1.5 border-b border-[#1a1a1a]">
+              <span className="text-[11px] text-[#555555] uppercase tracking-wider">Elon Flight Tracker</span>
+            </div>
+            <div className="flex items-center justify-center h-[200px] text-[#333]">
+              <div className="text-center">
+                <div className="text-3xl mb-1">&#9992;</div>
+                <div className="text-[11px] text-[#555555]">Coming soon</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }
