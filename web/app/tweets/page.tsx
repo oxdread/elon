@@ -201,10 +201,14 @@ export default function TweetsPage() {
                       return (
                         <div key={i} className="flex gap-2.5 px-3 py-2 rounded-lg bg-[#111111] border border-[#1a1a1a]/40 hover:bg-[#141414] transition-colors"
                           style={{ borderLeft: `2px solid ${isBuy ? "#0ecb81" : "#f6465d"}` }}>
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 overflow-hidden ${
                             isBuy ? "bg-[#0ecb81]/15 text-[#0ecb81]" : "bg-[#f6465d]/15 text-[#f6465d]"
                           }`}>
-                            {(t.wallet_name || "?").charAt(0).toUpperCase()}
+                            {t.avatar ? (
+                              <img src={t.avatar} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              (t.wallet_name || "?").charAt(0).toUpperCase()
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 mb-0.5">

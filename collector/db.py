@@ -76,6 +76,15 @@ def init_db(conn) -> None:
                 raw JSONB
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS tracked_wallets (
+                id SERIAL PRIMARY KEY,
+                address TEXT UNIQUE,
+                name TEXT,
+                profile_image TEXT,
+                added_at INT DEFAULT 0
+            )
+        """)
     conn.commit()
 
 

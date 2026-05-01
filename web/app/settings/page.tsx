@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Shield, Trash2, Wallet, Plus, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { Shield, Trash2, Wallet, Plus, Eye, EyeOff, RefreshCw, Users } from "lucide-react";
 
 type WalletData = {
   key: string;
@@ -23,6 +23,9 @@ export default function SettingsPage() {
   const [showKey, setShowKey] = useState<Record<number, boolean>>({});
   const [tab, setTab] = useState<"overview" | "positions" | "history">("overview");
   const [mounted, setMounted] = useState(false);
+  const [trackedWallets, setTrackedWallets] = useState<{ id: number; address: string; name: string; profile_image: string }[]>([]);
+  const [traderInput, setTraderInput] = useState("");
+  const [traderLoading, setTraderLoading] = useState(false);
 
   // Load wallets from localStorage
   useEffect(() => {
@@ -49,6 +52,45 @@ export default function SettingsPage() {
       }
     }
   }, []);
+
+  // Load tracked wallets
+  useEffect(() => {
+    fetch("/api/tracked-wallets").then(r => r.json()).then(d => {
+      if (Array.isArray(d)) setTrackedWallets(d);
+    }).catch(() => {});
+  }, []);
+
+  const addTrader = async () => {
+    if (!traderInput.trim()) return;
+    let addr = traderInput.trim().toLowerCase();
+    if (!addr.startsWith("0x")) addr = "0x" + addr;
+    setTraderLoading(true);
+    try {
+      const r = await fetch("/api/tracked-wallets", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: addr }),
+      });
+      const d = await r.json();
+      if (d.status === "ok") {
+        setTraderInput("");
+        // Refresh list
+        const lr = await fetch("/api/tracked-wallets");
+        const ld = await lr.json();
+        if (Array.isArray(ld)) setTrackedWallets(ld);
+      }
+    } catch {}
+    setTraderLoading(false);
+  };
+
+  const removeTrader = async (addr: string) => {
+    try {
+      await fetch("/api/tracked-wallets", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address: addr, action: "remove" }),
+      });
+      setTrackedWallets(prev => prev.filter(w => w.address !== addr));
+    } catch {}
+  };
 
   const saveWallets = (keys: { key: string; funder: string | null }[]) => {
     localStorage.setItem("poly_wallets", JSON.stringify(keys));
@@ -246,6 +288,54 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+
+          {/* Top Traders */}
+          <div className="border-t border-[#1a1a1a] pt-3 mt-2">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <Users size={12} className="text-[#555555]" />
+                <span className="text-[11px] text-[#555555] uppercase tracking-wider">Top Traders</span>
+              </div>
+            </div>
+
+            <div className="flex gap-1.5 mb-2">
+              <input type="text" value={traderInput} onChange={(e) => setTraderInput(e.target.value)}
+                placeholder="0x... wallet address"
+                onKeyDown={(e) => e.key === "Enter" && addTrader()}
+                className="flex-1 bg-[#0a0a0a] border border-[#1a1a1a]/50 rounded-md px-2 py-1.5 text-[10px] text-[#e5e5e5] font-mono focus:outline-none focus:border-[#3b82f6]/50" />
+              <button onClick={addTrader} disabled={traderLoading || !traderInput.trim()}
+                className="px-2.5 py-1.5 rounded-md text-[10px] font-bold bg-[#3b82f6] text-white hover:bg-blue-500 disabled:opacity-30 transition-colors shrink-0">
+                {traderLoading ? "..." : "Add"}
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              {trackedWallets.map((tw) => (
+                <div key={tw.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-[#0d0d0d] border border-[#1a1a1a]/50">
+                  <div className="w-6 h-6 rounded-full bg-[#1a1a1a] shrink-0 overflow-hidden">
+                    {tw.profile_image ? (
+                      <img src={`/traders/${tw.address}.jpg`} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-[#555555]">
+                        {tw.name.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] font-medium text-[#e5e5e5] truncate">{tw.name}</div>
+                    <div className="text-[9px] text-[#555555] font-mono">{tw.address.slice(0, 6)}...{tw.address.slice(-4)}</div>
+                  </div>
+                  <button onClick={() => removeTrader(tw.address)}
+                    className="p-1 rounded hover:bg-[#f6465d]/10 text-[#555555] hover:text-[#f6465d] transition-colors shrink-0">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+              {trackedWallets.length === 0 && (
+                <div className="text-[10px] text-[#555555] text-center py-2">No traders tracked yet</div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Right: Wallet detail */}

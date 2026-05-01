@@ -9,13 +9,20 @@ export async function GET() {
   }
   try {
     const { rows } = await query(
-      `SELECT wallet_name, wallet_address, side, size, price, outcome, market, timestamp
-       FROM top_trader_trades
-       ORDER BY timestamp DESC
+      `SELECT t.wallet_name, t.wallet_address, t.side, t.size, t.price, t.outcome, t.market, t.timestamp,
+              w.profile_image
+       FROM top_trader_trades t
+       LEFT JOIN tracked_wallets w ON w.address = t.wallet_address
+       ORDER BY t.timestamp DESC
        LIMIT 30`
     );
-    cache = { data: rows, ts: Date.now() };
-    return NextResponse.json(rows);
+    // Add local image path
+    const data = rows.map((r: any) => ({
+      ...r,
+      avatar: r.profile_image ? `/traders/${r.wallet_address}.jpg` : null,
+    }));
+    cache = { data, ts: Date.now() };
+    return NextResponse.json(data);
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }

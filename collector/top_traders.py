@@ -1,6 +1,7 @@
 """Poll top trader wallets for recent trades every 10 seconds.
 
-Saves to top_trader_trades table. Runs as daemon thread alongside the main fetcher.
+Reads tracked wallets from DB (tracked_wallets table).
+Saves trades to top_trader_trades table. Runs as daemon thread.
 """
 from __future__ import annotations
 
@@ -12,12 +13,13 @@ from typing import Optional
 import httpx
 import psycopg2
 
-TRADERS = [
+# Fallback hardcoded wallets (used if DB table is empty)
+DEFAULT_TRADERS = [
     {"name": "gustav4", "address": "0x471abf0558dcd381dcea2fdf54390760c9a30328"},
     {"name": "prexpect", "address": "0xa59c570a9eca148da55f6e1f47a538c0c600bb62"},
 ]
 
-POLL_INTERVAL = 10  # seconds
+POLL_INTERVAL = 10
 _db_url: Optional[str] = None
 _started = False
 
@@ -42,15 +44,30 @@ def _get_conn():
     return conn
 
 
+def _get_wallets(conn) -> list[dict]:
+    """Read tracked wallets from DB. Falls back to defaults if empty."""
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT address, name FROM tracked_wallets ORDER BY added_at")
+        rows = cur.fetchall()
+        cur.close()
+        if rows:
+            return [{"address": r[0], "name": r[1] or r[0][:8]} for r in rows]
+    except Exception:
+        pass
+    return DEFAULT_TRADERS
+
+
 def _loop() -> None:
     client = httpx.Client(timeout=10)
     conn = _get_conn()
-    # Track last seen timestamp per wallet to avoid re-fetching old trades
     last_ts: dict[str, int] = {}
 
     while True:
         try:
-            for trader in TRADERS:
+            wallets = _get_wallets(conn)
+
+            for trader in wallets:
                 try:
                     r = client.get(
                         "https://data-api.polymarket.com/trades",
@@ -69,12 +86,6 @@ def _loop() -> None:
                     for t in trades:
                         trade_id = t.get("id") or t.get("transactionHash") or f"{trader['address']}-{t.get('timestamp', 0)}-{t.get('price', 0)}"
                         ts = int(t.get("timestamp") or t.get("matchTime") or 0)
-
-                        # Skip if we've seen this timestamp before (quick filter)
-                        prev = last_ts.get(trader["address"], 0)
-                        if ts <= prev and prev > 0:
-                            # Still try insert — ON CONFLICT handles duplicates
-                            pass
 
                         try:
                             cur.execute("""
@@ -100,7 +111,6 @@ def _loop() -> None:
 
                     cur.close()
 
-                    # Update last seen timestamp
                     if trades:
                         max_ts = max(int(t.get("timestamp") or t.get("matchTime") or 0) for t in trades)
                         if max_ts > last_ts.get(trader["address"], 0):
