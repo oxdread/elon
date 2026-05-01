@@ -89,9 +89,9 @@ export default function TweetsPage() {
 
         {/* Top bar */}
         <div className="flex gap-2 shrink-0">
-          {/* Analytics — spans left + middle */}
-          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-4 py-3">
-            <div className="flex items-center gap-4">
+          {/* Analytics — matches left(38%) + middle(40%) */}
+          <div style={{ width: "calc(78% + 4px)" }} className="shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-4 py-3">
+            <div className="flex items-center gap-3">
               <select value={selectedEvent || ""} onChange={(e) => setSelectedEvent(e.target.value)}
                 className="bg-[#111] border border-[#1a1a1a]/50 rounded-lg px-3 py-2 text-sm font-bold text-[#e5e5e5] cursor-pointer shrink-0">
                 {events.map((ev) => (
@@ -108,8 +108,8 @@ export default function TweetsPage() {
               </div>
             </div>
           </div>
-          {/* Donation — same width as right column */}
-          <div className="w-[22%] shrink-0 bg-gradient-to-r from-[#0d0d0d] to-[#3b82f6]/5 rounded-lg border border-[#1a1a1a] px-3 py-2.5 flex flex-col justify-center">
+          {/* Donation — matches right(22%) */}
+          <div className="flex-1 bg-gradient-to-r from-[#0d0d0d] to-[#3b82f6]/5 rounded-lg border border-[#1a1a1a] px-3 py-2.5 flex flex-col justify-center">
             <div className="text-[11px] font-bold text-[#e5e5e5] mb-1.5">Support This Project</div>
             <div className="flex items-center gap-1.5">
               <div className="flex-1 bg-[#0a0a0a] rounded-md px-2 py-1 text-[9px] text-[#555555] font-mono truncate border border-[#1a1a1a]/50">0x...donate</div>
@@ -127,7 +127,7 @@ export default function TweetsPage() {
               <span className="text-xs font-bold text-[#e5e5e5]">Tweets Activity</span>
               <span className="text-[10px] text-[#555555]">Last 7 days (ET)</span>
             </div>
-            <div className="flex-1 p-1 overflow-hidden">
+            <div className="flex-1 p-1 overflow-hidden flex flex-col">
               <TweetHeatmap heatmapFrom={fromDate} heatmapTo={toDate} compact />
             </div>
           </div>
