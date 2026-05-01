@@ -122,13 +122,9 @@ export default function TweetsPage() {
         <div className="flex-1 flex gap-2 min-h-0">
 
           {/* Left: Tweets Activity */}
-          <div className="w-[33%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">            <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0 flex items-center justify-between">
-              <span className="text-xs font-bold text-[#e5e5e5]">Tweets Activity</span>
-              <span className="text-[10px] text-[#555555]">Last 7 days (ET)</span>
-            </div>
-            <div className="flex-1 p-1 overflow-y-auto flex flex-col">
+          <div className="w-[33%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-y-auto">
               <TweetHeatmap heatmapFrom={fromDate} heatmapTo={toDate} compact />
-            </div>
+          </div>
           </div>
 
           {/* Middle: Post History + Wallet */}
