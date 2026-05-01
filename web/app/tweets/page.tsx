@@ -87,58 +87,53 @@ export default function TweetsPage() {
   return (
     <div className="h-full bg-[#060606] flex flex-col p-2 gap-2 overflow-hidden">
 
-        {/* Top bar — 3 columns matching grid below */}
+        {/* Top bar */}
         <div className="flex gap-2 shrink-0">
-          {/* Left: Event + Stats */}
-          <div className="w-[35%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-3 py-2.5">
-            <select value={selectedEvent || ""} onChange={(e) => setSelectedEvent(e.target.value)}
-              className="bg-[#111] border border-[#1a1a1a]/50 rounded-lg px-3 py-1.5 text-sm font-bold text-[#e5e5e5] cursor-pointer w-full mb-2">
-              {events.map((ev) => (
-                <option key={ev.id} value={ev.id} className="bg-[#0d0d0d]">
-                  {shortSlug(ev.slug)} ({eventDurationDays(ev) >= 5 ? "7d" : "2d"})
-                </option>
-              ))}
-            </select>
+          {/* Analytics — spans left + middle */}
+          <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-4 py-3">
             <div className="flex items-center gap-4">
-              <Stat label="Total" value={String(currentCount)} color="text-[#3b82f6]" />
-              <Stat label="Daily" value={dailyAvg} color="text-[#0ecb81]" />
-              <Stat label="/Hour" value={hourlyAvg} color="text-[#fbbf24]" />
-              <Stat label="Ends" value={timerStr || "—"} color={timerStr === "ENDED" ? "text-[#f6465d]" : "text-[#808080]"} />
+              <select value={selectedEvent || ""} onChange={(e) => setSelectedEvent(e.target.value)}
+                className="bg-[#111] border border-[#1a1a1a]/50 rounded-lg px-3 py-2 text-sm font-bold text-[#e5e5e5] cursor-pointer shrink-0">
+                {events.map((ev) => (
+                  <option key={ev.id} value={ev.id} className="bg-[#0d0d0d]">
+                    {shortSlug(ev.slug)} ({eventDurationDays(ev) >= 5 ? "7d" : "2d"})
+                  </option>
+                ))}
+              </select>
+              <div className="flex items-center gap-2 flex-1">
+                <StatCard label="Total Tweets" value={String(currentCount)} color="text-[#3b82f6]" />
+                <StatCard label="Daily Avg" value={dailyAvg} color="text-[#0ecb81]" />
+                <StatCard label="Per Hour" value={hourlyAvg} color="text-[#fbbf24]" />
+                <StatCard label="Ends In" value={timerStr || "—"} color={timerStr === "ENDED" ? "text-[#f6465d]" : "text-[#808080]"} />
+              </div>
             </div>
           </div>
-          {/* Middle: spacer */}
-          <div className="w-[30%] shrink-0" />
-          {/* Right: Donation — same width as right column below */}
-          <div className="flex-1 bg-gradient-to-r from-[#0d0d0d] to-[#3b82f6]/5 rounded-lg border border-[#1a1a1a] px-4 py-2.5 flex items-center gap-3">
-            <div className="shrink-0">
-              <div className="text-xs font-bold text-[#e5e5e5]">Support This Project</div>
-              <div className="text-[9px] text-[#555555]">Help keep the servers running</div>
+          {/* Donation — same width as right column */}
+          <div className="w-[22%] shrink-0 bg-gradient-to-r from-[#0d0d0d] to-[#3b82f6]/5 rounded-lg border border-[#1a1a1a] px-3 py-2.5 flex flex-col justify-center">
+            <div className="text-[11px] font-bold text-[#e5e5e5] mb-1.5">Support This Project</div>
+            <div className="flex items-center gap-1.5">
+              <div className="flex-1 bg-[#0a0a0a] rounded-md px-2 py-1 text-[9px] text-[#555555] font-mono truncate border border-[#1a1a1a]/50">0x...donate</div>
+              <button className="px-2 py-1 rounded-md text-[9px] font-bold bg-[#3b82f6] text-white hover:bg-blue-500 transition-colors shrink-0">Copy</button>
             </div>
-            <div className="flex-1 bg-[#0a0a0a] rounded-md px-2 py-1 text-[9px] text-[#555555] font-mono truncate border border-[#1a1a1a]/50">
-              0x...donate
-            </div>
-            <button className="px-2.5 py-1 rounded-md text-[9px] font-bold bg-[#3b82f6] text-white hover:bg-blue-500 transition-colors shrink-0">
-              Copy
-            </button>
           </div>
         </div>
 
-        {/* Main 3-column layout — fill remaining height */}
+        {/* Main 3-column layout */}
         <div className="flex-1 flex gap-2 min-h-0">
 
-          {/* Left: Tweets Activity (full height, no scroll) */}
-          <div className="w-[35%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
+          {/* Left: Tweets Activity */}
+          <div className="w-[38%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
             <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0 flex items-center justify-between">
               <span className="text-xs font-bold text-[#e5e5e5]">Tweets Activity</span>
               <span className="text-[10px] text-[#555555]">Last 7 days (ET)</span>
             </div>
-            <div className="flex-1 p-1.5 overflow-hidden">
+            <div className="flex-1 p-1 overflow-hidden">
               <TweetHeatmap heatmapFrom={fromDate} heatmapTo={toDate} compact />
             </div>
           </div>
 
-          {/* Middle: Post History + Wallet Tracker */}
-          <div className="w-[30%] shrink-0 flex flex-col gap-2 min-w-0">
+          {/* Middle: Post History + Wallet */}
+          <div className="w-[40%] shrink-0 flex flex-col gap-2 min-w-0">
             {/* Elon Post History — 55% */}
             <div className="flex-[6] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0 flex items-center justify-between">
@@ -217,8 +212,8 @@ export default function TweetsPage() {
             </div>
           </div>
 
-          {/* Right: Comments + News + Flight (3 stacked) */}
-          <div className="flex-1 flex flex-col gap-2 min-w-0">
+          {/* Right: Comments + News + Flight */}
+          <div className="w-[22%] shrink-0 flex flex-col gap-2">
             {/* Polymarket Comments */}
             <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
@@ -261,11 +256,11 @@ export default function TweetsPage() {
   );
 }
 
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
+function StatCard({ label, value, color }: { label: string; value: string; color: string }) {
   return (
-    <div>
-      <div className="text-[9px] text-[#555555] uppercase tracking-wider">{label}</div>
-      <div className={`text-xl font-bold tabular-nums ${color}`}>{value}</div>
+    <div className="flex-1 bg-[#111] rounded-lg border border-[#1a1a1a]/50 px-3 py-2">
+      <div className="text-[8px] text-[#555555] uppercase tracking-wider">{label}</div>
+      <div className={`text-lg font-bold tabular-nums ${color}`}>{value}</div>
     </div>
   );
 }
