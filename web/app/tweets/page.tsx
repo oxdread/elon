@@ -125,7 +125,6 @@ export default function TweetsPage() {
           <div className="w-[33%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-y-auto">
               <TweetHeatmap heatmapFrom={fromDate} heatmapTo={toDate} compact />
           </div>
-          </div>
 
           {/* Middle: Post History + Wallet */}
           <div className="w-[30%] shrink-0 flex flex-col gap-2 min-w-0">
