@@ -27,7 +27,7 @@ export default function Sidebar() {
       </div>
 
       {/* Nav items */}
-      <nav className="flex-1 py-3 flex flex-col items-center gap-1">
+      <nav className="flex-1 py-4 flex flex-col items-center gap-3">
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
