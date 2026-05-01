@@ -60,8 +60,8 @@ export default function TweetHeatmap({ heatmapFrom, heatmapTo, compact }: { heat
   });
 
   const cellSize = compact ? "1px" : "2px";
-  const fontSize = compact ? "9px" : "11px";
-  const cellPad = compact ? "2px 0" : "3px 0";
+  const fontSize = compact ? "11px" : "11px";
+  const cellPad = compact ? "3px 0" : "3px 0";
 
   return (
     <div className="h-full overflow-hidden">
