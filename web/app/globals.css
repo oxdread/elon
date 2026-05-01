@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+*:focus {
+  outline: none !important;
+}
+
 :root {
   --bg-primary: #060606;
   --bg-secondary: #0d0d0d;
