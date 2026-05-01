@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 type HeatmapDay = { dateStr: string; dayName: string; dayNum: number; startUtc: number; endUtc: number };
 
-export default function TweetHeatmap({ heatmapFrom, heatmapTo }: { heatmapFrom: string; heatmapTo: string }) {
+export default function TweetHeatmap({ heatmapFrom, heatmapTo, compact }: { heatmapFrom: string; heatmapTo: string; compact?: boolean }) {
   const [data, setData] = useState<{ days: HeatmapDay[]; tweets: number[]; et_offset_hours: number } | null>(null);
 
   useEffect(() => {
@@ -59,9 +59,13 @@ export default function TweetHeatmap({ heatmapFrom, heatmapTo }: { heatmapFrom: 
     return total < dayTotals[i - 1] ? "down" : total > dayTotals[i - 1] ? "up" : "flat";
   });
 
+  const cellSize = compact ? "1px" : "2px";
+  const fontSize = compact ? "9px" : "11px";
+  const cellPad = compact ? "2px 0" : "3px 0";
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-[11px] tabular-nums border-separate" style={{ borderSpacing: "2px" }}>
+    <div className="overflow-hidden">
+      <table className={`w-full tabular-nums border-separate`} style={{ borderSpacing: cellSize, fontSize }}>
         <thead>
           <tr>
             <th className="w-12"></th>
@@ -79,8 +83,8 @@ export default function TweetHeatmap({ heatmapFrom, heatmapTo }: { heatmapFrom: 
               <td className="text-right pr-2 text-neutral-500 font-medium">{String(hour).padStart(2, "0")}:00</td>
               {row.map((val, dayIdx) => (
                 <td key={dayIdx}
-                  className={`text-center rounded ${cellBg(val, dayIdx, hour)} ${hour === nowHour && dayIdx === nowDayIdx ? "ring-2 ring-amber-500" : ""}`}
-                  style={{ padding: "3px 0" }}>
+                  className={`text-center ${cellBg(val, dayIdx, hour)} ${hour === nowHour && dayIdx === nowDayIdx ? "ring-1 ring-amber-500" : ""}`}
+                  style={{ padding: cellPad }}>
                   <span className={val > 0 ? "text-white font-bold" : "text-neutral-600"}>{val}</span>
                 </td>
               ))}

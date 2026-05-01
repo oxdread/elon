@@ -87,9 +87,9 @@ export default function TweetsPage() {
   return (
     <div className="h-full bg-[#060606] flex flex-col p-2 gap-2 overflow-hidden">
 
-        {/* Top bar — same 3 column widths as main grid */}
+        {/* Top bar — 3 columns matching grid below */}
         <div className="flex gap-2 shrink-0">
-          {/* Left: Event + Stats — matches w-[35%] below */}
+          {/* Left: Event + Stats */}
           <div className="w-[35%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-3 py-2.5">
             <select value={selectedEvent || ""} onChange={(e) => setSelectedEvent(e.target.value)}
               className="bg-[#111] border border-[#1a1a1a]/50 rounded-lg px-3 py-1.5 text-sm font-bold text-[#e5e5e5] cursor-pointer w-full mb-2">
@@ -106,16 +106,18 @@ export default function TweetsPage() {
               <Stat label="Ends" value={timerStr || "—"} color={timerStr === "ENDED" ? "text-[#f6465d]" : "text-[#808080]"} />
             </div>
           </div>
-          {/* Middle+Right: Donation — matches w-[30%] + flex-1 below */}
-          <div className="flex-1 bg-gradient-to-r from-[#0d0d0d] to-[#3b82f6]/5 rounded-lg border border-[#1a1a1a] px-4 py-2.5 flex items-center gap-4">
+          {/* Middle: spacer */}
+          <div className="w-[30%] shrink-0" />
+          {/* Right: Donation — same width as right column below */}
+          <div className="flex-1 bg-gradient-to-r from-[#0d0d0d] to-[#3b82f6]/5 rounded-lg border border-[#1a1a1a] px-4 py-2.5 flex items-center gap-3">
             <div className="shrink-0">
               <div className="text-xs font-bold text-[#e5e5e5]">Support This Project</div>
               <div className="text-[9px] text-[#555555]">Help keep the servers running</div>
             </div>
-            <div className="flex-1 bg-[#0a0a0a] rounded-md px-2.5 py-1.5 text-[10px] text-[#555555] font-mono truncate border border-[#1a1a1a]/50">
-              0x...donate address
+            <div className="flex-1 bg-[#0a0a0a] rounded-md px-2 py-1 text-[9px] text-[#555555] font-mono truncate border border-[#1a1a1a]/50">
+              0x...donate
             </div>
-            <button className="px-3 py-1.5 rounded-md text-[10px] font-bold bg-[#3b82f6] text-white hover:bg-blue-500 transition-colors shrink-0">
+            <button className="px-2.5 py-1 rounded-md text-[9px] font-bold bg-[#3b82f6] text-white hover:bg-blue-500 transition-colors shrink-0">
               Copy
             </button>
           </div>
@@ -124,14 +126,14 @@ export default function TweetsPage() {
         {/* Main 3-column layout — fill remaining height */}
         <div className="flex-1 flex gap-2 min-h-0">
 
-          {/* Left: Tweets Activity (full height) */}
+          {/* Left: Tweets Activity (full height, no scroll) */}
           <div className="w-[35%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
             <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0 flex items-center justify-between">
               <span className="text-xs font-bold text-[#e5e5e5]">Tweets Activity</span>
               <span className="text-[10px] text-[#555555]">Last 7 days (ET)</span>
             </div>
-            <div className="flex-1 overflow-auto p-2">
-              <TweetHeatmap heatmapFrom={fromDate} heatmapTo={toDate} />
+            <div className="flex-1 p-1.5 overflow-hidden">
+              <TweetHeatmap heatmapFrom={fromDate} heatmapTo={toDate} compact />
             </div>
           </div>
 
