@@ -3,10 +3,45 @@
 import { useState, useEffect } from "react";
 
 export default function AdminPage() {
+  const [authed, setAuthed] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [checking, setChecking] = useState(false);
+
   const [wallets, setWallets] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
+
+  const login = async () => {
+    if (!password) return;
+    setChecking(true);
+    setError("");
+    try {
+      const r = await fetch("/api/admin-auth", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const d = await r.json();
+      if (d.status === "ok") {
+        setAuthed(true);
+        sessionStorage.setItem("admin_authed", "1");
+        fetchWallets();
+      } else {
+        setError("Wrong password");
+      }
+    } catch {
+      setError("Error");
+    }
+    setChecking(false);
+  };
+
+  useEffect(() => {
+    if (sessionStorage.getItem("admin_authed") === "1") {
+      setAuthed(true);
+      fetchWallets();
+    }
+  }, []);
 
   const fetchWallets = async () => {
     try {
@@ -15,8 +50,6 @@ export default function AdminPage() {
       if (Array.isArray(d)) setWallets(d);
     } catch {}
   };
-
-  useEffect(() => { fetchWallets(); }, []);
 
   const addWallet = async () => {
     if (!input.trim()) return;
@@ -52,10 +85,46 @@ export default function AdminPage() {
     fetchWallets();
   };
 
+  // Password gate
+  if (!authed) {
+    return (
+      <div className="min-h-screen bg-[#060606] flex items-center justify-center">
+        <div className="w-80 bg-[#0d0d0d] rounded-xl border border-[#1a1a1a] p-6">
+          <div className="text-center mb-5">
+            <div className="text-2xl mb-2">&#128274;</div>
+            <div className="text-sm font-bold text-[#e5e5e5]">Admin Access</div>
+            <div className="text-[10px] text-[#555555] mt-1">Enter password to continue</div>
+          </div>
+          {error && (
+            <div className="text-[11px] text-[#f6465d] bg-[#f6465d]/10 px-3 py-1.5 rounded-lg mb-3 text-center">{error}</div>
+          )}
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && login()}
+            placeholder="Password"
+            autoFocus
+            className="w-full bg-[#111] border border-[#1a1a1a] rounded-lg px-4 py-2.5 text-sm text-[#e5e5e5] text-center focus:outline-none focus:border-[#3b82f6] mb-3" />
+          <button onClick={login} disabled={checking || !password}
+            className="w-full py-2.5 rounded-lg text-sm font-bold bg-[#3b82f6] text-white hover:bg-blue-500 disabled:opacity-30 transition-colors">
+            {checking ? "Checking..." : "Enter"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Admin panel
   return (
     <div className="min-h-screen bg-[#060606] text-[#e5e5e5] p-8 max-w-2xl mx-auto">
-      <h1 className="text-xl font-bold mb-1">Top Traders Config</h1>
-      <p className="text-[#555555] text-xs mb-6">Add Polymarket wallet addresses to track. Profile pics are scraped automatically.</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold">Top Traders</h1>
+          <p className="text-[#555555] text-xs">Manage tracked Polymarket wallets</p>
+        </div>
+        <button onClick={() => { setAuthed(false); sessionStorage.removeItem("admin_authed"); }}
+          className="text-[11px] text-[#555555] hover:text-[#e5e5e5] px-3 py-1.5 rounded-lg border border-[#1a1a1a] transition-colors">
+          Logout
+        </button>
+      </div>
 
       <div className="flex gap-2 mb-4">
         <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
