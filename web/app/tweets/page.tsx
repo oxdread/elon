@@ -85,49 +85,46 @@ export default function TweetsPage() {
   const fromDate = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
 
   return (
-    <div className="h-full overflow-y-auto bg-[#060606]">
-      <div className="p-2 space-y-2 min-h-full">
+    <div className="h-full bg-[#060606] flex flex-col p-2 gap-2 overflow-hidden">
 
         {/* Top bar: Analytics + Donation */}
-        <div className="flex gap-2">
-          {/* Tweet Analytics with event dropdown */}
+        <div className="flex gap-2 shrink-0">
+          {/* Tweet Analytics */}
           <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] px-4 py-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-[#e5e5e5]">Tweet Analytics</span>
+            <div className="flex items-center gap-4">
               <select value={selectedEvent || ""} onChange={(e) => setSelectedEvent(e.target.value)}
-                className="bg-[#111] border border-[#1a1a1a]/50 rounded-md px-2 py-1 text-[11px] text-[#e5e5e5] cursor-pointer">
+                className="bg-[#111] border border-[#1a1a1a]/50 rounded-lg px-3 py-1.5 text-sm font-bold text-[#e5e5e5] cursor-pointer shrink-0">
                 {events.map((ev) => (
                   <option key={ev.id} value={ev.id} className="bg-[#0d0d0d]">
                     {shortSlug(ev.slug)} ({eventDurationDays(ev) >= 5 ? "7d" : "2d"})
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="flex items-center gap-6">
-              <Stat label="Total" value={String(currentCount)} color="text-[#3b82f6]" />
-              <Stat label="Daily" value={dailyAvg} color="text-[#0ecb81]" />
-              <Stat label="/Hour" value={hourlyAvg} color="text-[#fbbf24]" />
-              <Stat label="Ends" value={timerStr || "—"} color={timerStr === "ENDED" ? "text-[#f6465d]" : "text-[#808080]"} />
+              <div className="flex items-center gap-6 ml-auto">
+                <Stat label="Total" value={String(currentCount)} color="text-[#3b82f6]" />
+                <Stat label="Daily" value={dailyAvg} color="text-[#0ecb81]" />
+                <Stat label="/Hour" value={hourlyAvg} color="text-[#fbbf24]" />
+                <Stat label="Ends" value={timerStr || "—"} color={timerStr === "ENDED" ? "text-[#f6465d]" : "text-[#808080]"} />
+              </div>
             </div>
           </div>
 
           {/* Donation bar */}
-          <div className="w-72 shrink-0 bg-gradient-to-r from-[#0d0d0d] to-[#3b82f6]/5 rounded-lg border border-[#1a1a1a] px-4 py-3 flex flex-col justify-center">
-            <div className="text-xs font-bold text-[#e5e5e5] mb-1">Support This Project</div>
-            <div className="text-[10px] text-[#808080] mb-2">Help us keep the servers running and build new features</div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 bg-[#0a0a0a] rounded-md px-2 py-1 text-[10px] text-[#555555] font-mono truncate border border-[#1a1a1a]/50">
-                0x...donate address
+          <div className="w-64 shrink-0 bg-gradient-to-r from-[#0d0d0d] to-[#3b82f6]/5 rounded-lg border border-[#1a1a1a] px-3 py-2.5 flex flex-col justify-center">
+            <div className="text-[11px] font-bold text-[#e5e5e5] mb-1">Support This Project</div>
+            <div className="flex items-center gap-1.5">
+              <div className="flex-1 bg-[#0a0a0a] rounded-md px-2 py-1 text-[9px] text-[#555555] font-mono truncate border border-[#1a1a1a]/50">
+                0x...donate
               </div>
-              <button className="px-3 py-1 rounded-md text-[10px] font-bold bg-[#3b82f6] text-white hover:bg-blue-500 transition-colors shrink-0">
+              <button className="px-2 py-1 rounded-md text-[9px] font-bold bg-[#3b82f6] text-white hover:bg-blue-500 transition-colors shrink-0">
                 Copy
               </button>
             </div>
           </div>
         </div>
 
-        {/* Main 3-column layout — fill viewport */}
-        <div className="flex gap-2" style={{ height: "calc(100vh - 130px)" }}>
+        {/* Main 3-column layout — fill remaining height */}
+        <div className="flex-1 flex gap-2 min-h-0">
 
           {/* Left: Tweets Activity (full height) */}
           <div className="w-[35%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
@@ -141,9 +138,9 @@ export default function TweetsPage() {
           </div>
 
           {/* Middle: Post History + Wallet Tracker */}
-          <div className="flex-1 flex flex-col gap-2 min-w-0">
+          <div className="w-[30%] shrink-0 flex flex-col gap-2 min-w-0">
             {/* Elon Post History — 55% */}
-            <div className="h-[55%] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
+            <div className="flex-[6] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0 flex items-center justify-between">
                 <span className="text-xs font-bold text-[#e5e5e5]">Elon Post History</span>
                 <span className="text-[10px] text-[#555555]">{tweets.length} posts</span>
@@ -177,7 +174,7 @@ export default function TweetsPage() {
             </div>
 
             {/* Top Wallet Tracker — 45% */}
-            <div className="h-[45%] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
+            <div className="flex-[4] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
                 <span className="text-xs font-bold text-[#e5e5e5]">Top Wallet Tracker</span>
               </div>
@@ -221,9 +218,9 @@ export default function TweetsPage() {
           </div>
 
           {/* Right: Comments + News + Flight (3 stacked) */}
-          <div className="w-72 shrink-0 flex flex-col gap-2">
+          <div className="flex-1 flex flex-col gap-2 min-w-0">
             {/* Polymarket Comments */}
-            <div className="h-[33.3%] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
+            <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
                 <span className="text-xs font-bold text-[#e5e5e5]">Polymarket Comments</span>
               </div>
@@ -233,7 +230,7 @@ export default function TweetsPage() {
             </div>
 
             {/* Elon News */}
-            <div className="h-[33.3%] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
+            <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
                 <span className="text-xs font-bold text-[#e5e5e5]">Elon News</span>
               </div>
@@ -246,7 +243,7 @@ export default function TweetsPage() {
             </div>
 
             {/* Flight Tracker */}
-            <div className="h-[33.3%] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden">
+            <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
                 <span className="text-xs font-bold text-[#e5e5e5]">Flight Tracker</span>
               </div>
@@ -260,7 +257,6 @@ export default function TweetsPage() {
           </div>
         </div>
 
-      </div>
     </div>
   );
 }
