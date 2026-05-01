@@ -168,11 +168,11 @@ export default function TradingPanel({
         }}>
 
         {/* Your shares card */}
-        <div className={`flex items-center justify-between px-3 py-2 mt-2 rounded-lg border ${
+        <div className={`flex items-center justify-between px-2.5 py-1.5 mt-2 rounded-lg border ${
           isYes ? "border-[#0ecb81]/15 bg-[#0ecb81]/5" : "border-[#f6465d]/15 bg-[#f6465d]/5"
         }`}>
-          <span className="text-[11px] text-[#808080]">{isYes ? "Yes" : "No"} Shares</span>
-          <span className={`text-sm font-bold tabular-nums ${isYes ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>
+          <span className="text-[10px] text-[#808080]">{isYes ? "Yes" : "No"} Shares</span>
+          <span className={`text-xs font-bold tabular-nums ${isYes ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>
             {curShares > 0 ? curShares.toLocaleString() : "0"}
           </span>
         </div>
