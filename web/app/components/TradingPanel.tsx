@@ -31,7 +31,6 @@ export default function TradingPanel({
 
   useEffect(() => { if (initialAction) setAction(initialAction); }, [initialAction]);
   useEffect(() => { if (initialAmount) { setAmount(initialAmount); setInputMode("shares"); } }, [initialAmount]);
-
   const handleOutcomeChange = (o: "yes" | "no") => { setOutcome(o); onOutcomeChange?.(o); };
 
   useEffect(() => {
@@ -72,12 +71,11 @@ export default function TradingPanel({
   }, []);
 
   const hasKey = typeof window !== "undefined" && !!localStorage.getItem("poly_private_key");
-  const yesTokenId = bracket?.yes_token_id;
-  const noTokenId = bracket?.no_token_id;
-  const yesPos = positions?.find((p) => p.asset === yesTokenId);
-  const noPos = positions?.find((p) => p.asset === noTokenId);
+  const yesPos = positions?.find((p) => p.asset === bracket?.yes_token_id);
+  const noPos = positions?.find((p) => p.asset === bracket?.no_token_id);
   const yesShares = yesPos ? parseFloat(yesPos.size || 0) : 0;
   const noShares = noPos ? parseFloat(noPos.size || 0) : 0;
+  const curShares = outcome === "yes" ? yesShares : noShares;
 
   const yesBid = bracket?.bid != null ? bracket.bid * 100 : null;
   const yesAsk = bracket?.ask != null ? bracket.ask * 100 : null;
@@ -97,8 +95,7 @@ export default function TradingPanel({
   }
 
   const adjustPrice = (delta: number) => {
-    const c = parseFloat(price) || 0;
-    setPrice(Math.max(0.1, Math.min(99.9, c + delta)).toFixed(1));
+    setPrice(Math.max(0.1, Math.min(99.9, (parseFloat(price) || 0) + delta)).toFixed(1));
   };
 
   const placeOrder = async () => {
@@ -143,41 +140,54 @@ export default function TradingPanel({
         <span className="text-[13px] font-bold text-[#e5e5e5]">{bracket.label}</span>
       </div>
 
-      {/* Yes / No top tabs — active tab merges into content */}
+      {/* Yes / No tabs */}
       <div className="flex shrink-0">
         <button onClick={() => handleOutcomeChange("yes")}
           className={`flex-1 py-2 text-sm font-bold transition-all ${
-            isYes
-              ? "text-[#0ecb81] bg-[#0d0d0d] rounded-t-lg border border-[#1a1a1a] border-b-0"
+            isYes ? "text-[#0ecb81] bg-[#0d0d0d] rounded-t-lg border border-[#1a1a1a] border-b-0"
               : "text-[#555555] hover:text-[#808080] border-b border-[#1a1a1a]"
           }`}>
           Yes {yesAsk != null ? `${yesAsk.toFixed(1)}¢` : ""}
         </button>
         <button onClick={() => handleOutcomeChange("no")}
           className={`flex-1 py-2 text-sm font-bold transition-all ${
-            !isYes
-              ? "text-[#f6465d] bg-[#0d0d0d] rounded-t-lg border border-[#1a1a1a] border-b-0"
+            !isYes ? "text-[#f6465d] bg-[#0d0d0d] rounded-t-lg border border-[#1a1a1a] border-b-0"
               : "text-[#555555] hover:text-[#808080] border-b border-[#1a1a1a]"
           }`}>
           No {noAsk != null ? `${noAsk.toFixed(1)}¢` : ""}
         </button>
       </div>
 
-      {/* Content area — connected to active tab */}
-      <div className="flex flex-col px-3 pb-3 pt-2 gap-2.5 bg-[#0d0d0d] border-x border-b border-[#1a1a1a] rounded-b-lg"
+      {/* Content — gradient from tab */}
+      <div className="flex flex-col px-3 pb-3 gap-2.5 border-x border-b border-[#1a1a1a] rounded-b-lg"
         style={{ background: isYes
-          ? "linear-gradient(180deg, #0d0d0d 0%, rgba(14,203,129,0.06) 50%, #0d0d0d 100%)"
-          : "linear-gradient(180deg, #0d0d0d 0%, rgba(246,70,93,0.06) 50%, #0d0d0d 100%)"
+          ? "linear-gradient(180deg, rgba(14,203,129,0.08) 0%, #0d0d0d 35%)"
+          : "linear-gradient(180deg, rgba(246,70,93,0.08) 0%, #0d0d0d 35%)"
         }}>
 
-        {/* Shares owned */}
-        {((isYes && yesShares > 0) || (!isYes && noShares > 0)) && (
-          <div className={`text-[10px] tabular-nums ${isYes ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>
-            {(isYes ? yesShares : noShares).toLocaleString()} shares
-          </div>
-        )}
+        {/* Your shares card */}
+        <div className={`flex items-center justify-between px-3 py-2 mt-2 rounded-lg border ${
+          isYes ? "border-[#0ecb81]/15 bg-[#0ecb81]/5" : "border-[#f6465d]/15 bg-[#f6465d]/5"
+        }`}>
+          <span className="text-[11px] text-[#808080]">{isYes ? "Yes" : "No"} Shares</span>
+          <span className={`text-sm font-bold tabular-nums ${isYes ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>
+            {curShares > 0 ? curShares.toLocaleString() : "0"}
+          </span>
+        </div>
 
-        {/* Order type + Limit Price row */}
+        {/* Buy / Sell toggle */}
+        <div className="flex gap-2">
+          <button onClick={() => setAction("buy")}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+              isBuy ? "bg-[#0ecb81] text-white" : "bg-[#111] text-[#555555] border border-[#1a1a1a]/50 hover:text-[#808080]"
+            }`}>Buy</button>
+          <button onClick={() => setAction("sell")}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+              !isBuy ? "bg-[#f6465d] text-white" : "bg-[#111] text-[#555555] border border-[#1a1a1a]/50 hover:text-[#808080]"
+            }`}>Sell</button>
+        </div>
+
+        {/* Order type + Limit Price */}
         <div className="flex items-center gap-2">
           <div className="relative">
             <button onClick={() => setShowOrderType(!showOrderType)}
@@ -188,14 +198,14 @@ export default function TradingPanel({
             {showOrderType && (
               <div className="absolute top-full left-0 mt-1 bg-[#141414] border border-[#252525] rounded-lg overflow-hidden z-20 shadow-xl min-w-[90px]">
                 <button onClick={() => { setOrderType("limit"); setShowOrderType(false); }}
-                  className={`block w-full text-left px-3 py-1.5 text-[11px] hover:bg-[#1a1a1a] transition-colors ${orderType === "limit" ? "text-[#e5e5e5]" : "text-[#808080]"}`}>Limit</button>
+                  className={`block w-full text-left px-3 py-1.5 text-[11px] hover:bg-[#1a1a1a] ${orderType === "limit" ? "text-[#e5e5e5]" : "text-[#808080]"}`}>Limit</button>
                 <button onClick={() => { setOrderType("market"); setShowOrderType(false); }}
-                  className={`block w-full text-left px-3 py-1.5 text-[11px] hover:bg-[#1a1a1a] transition-colors ${orderType === "market" ? "text-[#e5e5e5]" : "text-[#808080]"}`}>Market</button>
+                  className={`block w-full text-left px-3 py-1.5 text-[11px] hover:bg-[#1a1a1a] ${orderType === "market" ? "text-[#e5e5e5]" : "text-[#808080]"}`}>Market</button>
               </div>
             )}
           </div>
           {orderType === "limit" && (
-            <div className="flex-1 flex items-center bg-[#0d0d0d] rounded-lg border border-[#1a1a1a]/50 overflow-hidden">
+            <div className="flex-1 flex items-center bg-[#0a0a0a] rounded-lg border border-[#1a1a1a]/50 overflow-hidden">
               <button onClick={() => adjustPrice(-0.5)} className="px-2.5 py-1.5 text-[#555555] hover:text-[#e5e5e5] hover:bg-[#131313] text-sm transition-colors">−</button>
               <div className="flex-1 text-center text-xs font-bold text-[#e5e5e5] tabular-nums py-1.5">{priceNum.toFixed(1)}¢</div>
               <button onClick={() => adjustPrice(0.5)} className="px-2.5 py-1.5 text-[#555555] hover:text-[#e5e5e5] hover:bg-[#131313] text-sm transition-colors">+</button>
@@ -203,18 +213,18 @@ export default function TradingPanel({
           )}
         </div>
 
-        {/* Amount input */}
+        {/* Amount */}
         <div>
           <div className="flex items-center justify-between mb-1">
             <div className="text-[10px] text-[#555555]">{inputMode === "dollars" ? "Amount" : "Shares"}</div>
-            <div className="flex bg-[#0d0d0d] rounded-md p-0.5 border border-[#1a1a1a]/50">
+            <div className="flex bg-[#0a0a0a] rounded-md p-0.5 border border-[#1a1a1a]/50">
               <button onClick={() => setInputMode("dollars")}
                 className={`px-2 py-0.5 rounded text-[9px] font-medium transition-all ${inputMode === "dollars" ? "bg-[#1a1a1a] text-[#e5e5e5]" : "text-[#555555]"}`}>USD</button>
               <button onClick={() => setInputMode("shares")}
                 className={`px-2 py-0.5 rounded text-[9px] font-medium transition-all ${inputMode === "shares" ? "bg-[#1a1a1a] text-[#e5e5e5]" : "text-[#555555]"}`}>Shares</button>
             </div>
           </div>
-          <div className="flex items-center bg-[#0d0d0d] rounded-lg border border-[#1a1a1a]/50 overflow-hidden">
+          <div className="flex items-center bg-[#0a0a0a] rounded-lg border border-[#1a1a1a]/50 overflow-hidden">
             <span className="pl-3 text-[#555555] text-xs">{inputMode === "dollars" ? "$" : "#"}</span>
             <input type="text" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
               placeholder="0.00" className="flex-1 bg-transparent px-2 py-2 text-xs text-[#e5e5e5] text-right focus:outline-none tabular-nums font-medium" />
@@ -228,15 +238,12 @@ export default function TradingPanel({
                 </button>
               ))
             ) : (
-              [10, 25, 50, 100].map((pct) => {
-                const cur = isYes ? yesShares : noShares;
-                return (
-                  <button key={pct} onClick={() => { if (cur > 0) { setAmount(String(Math.floor(cur * pct / 100))); setInputMode("shares"); } }}
-                    className="flex-1 py-0.5 rounded-md text-[9px] font-medium bg-[#111] text-[#555555] hover:text-[#e5e5e5] hover:bg-[#1a1a1a] border border-[#1a1a1a]/30 transition-colors">
-                    {pct === 100 ? "All" : `${pct}%`}
-                  </button>
-                );
-              })
+              [10, 25, 50, 100].map((pct) => (
+                <button key={pct} onClick={() => { if (curShares > 0) { setAmount(String(Math.floor(curShares * pct / 100))); setInputMode("shares"); } }}
+                  className="flex-1 py-0.5 rounded-md text-[9px] font-medium bg-[#111] text-[#555555] hover:text-[#e5e5e5] hover:bg-[#1a1a1a] border border-[#1a1a1a]/30 transition-colors">
+                  {pct === 100 ? "All" : `${pct}%`}
+                </button>
+              ))
             )}
           </div>
         </div>
@@ -259,15 +266,13 @@ export default function TradingPanel({
           )}
         </div>
 
-        {/* Big Buy/Sell button */}
+        {/* Place Order — blue */}
         <button
           onClick={placeOrder}
           disabled={!hasKey || loading || total <= 0}
-          className={`w-full py-3 rounded-lg font-bold text-sm text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
-            isBuy ? "bg-[#0ecb81] hover:bg-[#0bb874]" : "bg-[#f6465d] hover:bg-[#e03e54]"
-          }`}
+          className="w-full py-3 rounded-lg font-bold text-sm text-white bg-blue-600 hover:bg-blue-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          {!hasKey ? "Import key in Settings" : isBuy ? `Buy ${isYes ? "Yes" : "No"}` : `Sell ${isYes ? "Yes" : "No"}`}
+          {!hasKey ? "Import key in Settings" : "Place Order"}
         </button>
       </div>
     </div>
