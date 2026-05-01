@@ -13,7 +13,7 @@ export default function TweetHeatmap({ heatmapFrom, heatmapTo }: { heatmapFrom: 
       try {
         const r = await fetch(`/api/tweet-heatmap?from=${heatmapFrom}&to=${heatmapTo}`, { cache: "no-store" });
         const d = await r.json();
-        if (!d.error) setData({ days: d.days, tweets: d.tweets, et_offset_hours: d.et_offset_hours });
+        if (!d.error) setData({ days: d.days || [], tweets: (d.tweets || []).map(Number).filter((n: number) => !isNaN(n)), et_offset_hours: d.et_offset_hours || 0 });
       } catch {}
     };
     fetchHeatmap();
@@ -28,8 +28,10 @@ export default function TweetHeatmap({ heatmapFrom, heatmapTo }: { heatmapFrom: 
   const dayTotals: number[] = Array(days.length).fill(0);
 
   for (const ts of tweets) {
+    if (typeof ts !== "number" || isNaN(ts)) continue;
     const etDate = new Date((ts + et_offset_hours * 3600) * 1000);
     const hour = etDate.getUTCHours();
+    if (hour < 0 || hour > 23) continue;
     const dayIdx = days.findIndex((day) => ts >= day.startUtc && ts < day.endUtc);
     if (dayIdx >= 0) { grid[hour][dayIdx]++; dayTotals[dayIdx]++; }
   }
