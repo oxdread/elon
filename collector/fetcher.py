@@ -16,7 +16,7 @@ import threading
 import httpx
 from dotenv import load_dotenv
 
-from collector import clob_feed, twitter_stream, user_feed
+from collector import clob_feed, twitter_stream, user_feed, top_traders
 from collector.cache_collector import start_cache_collector
 from collector.db import (
     connect, init_db, upsert_event, upsert_bracket, get_brackets,
@@ -201,6 +201,11 @@ def main():
     user_feed.set_condition_ids(condition_ids)
     user_feed.start()
     print(f"[main] user WS channel started for {len(condition_ids)} markets")
+
+    # --- Start top traders collector ---
+    top_traders.set_db_url(db_url)
+    top_traders.start()
+    print("[main] top traders collector started")
 
     # --- Main polling loop ---
     last_discovery = time.time()

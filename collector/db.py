@@ -61,6 +61,21 @@ def init_db(conn) -> None:
                 ms_ws_confirm INT
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS top_trader_trades (
+                id SERIAL PRIMARY KEY,
+                wallet_address TEXT,
+                wallet_name TEXT,
+                trade_id TEXT UNIQUE,
+                side TEXT,
+                size NUMERIC,
+                price NUMERIC,
+                outcome TEXT,
+                market TEXT,
+                timestamp INT,
+                raw JSONB
+            )
+        """)
     conn.commit()
 
 

@@ -8,11 +8,6 @@ import Comments from "../components/Comments";
 type Event = { id: string; slug: string; title: string; start_date: string; end_date: string };
 type Tweet = { id: string; ts: number; text: string };
 
-const TOP_TRADERS = [
-  { name: "gustav4", address: "0x471abf0558dcd381dcea2fdf54390760c9a30328" },
-  { name: "prexpect", address: "0xa59c570a9eca148da55f6e1f47a538c0c600bb62" },
-];
-
 export default function TweetsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [tweetCounts, setTweetCounts] = useState<Record<string, number>>({});
@@ -21,7 +16,7 @@ export default function TweetsPage() {
   const [commentsData, setCommentsData] = useState<unknown[] | null>(null);
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState(0);
-  const [trackerTrades, setTrackerTrades] = useState<Record<string, any[]>>({});
+  const [trackerTrades, setTrackerTrades] = useState<any[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -63,21 +58,17 @@ export default function TweetsPage() {
     return () => clearInterval(id);
   }, []);
 
-  // Fetch top trader trades
+  // Fetch top trader trades from our API
   useEffect(() => {
     const fetchTraders = async () => {
-      const results: Record<string, any[]> = {};
-      for (const t of TOP_TRADERS) {
-        try {
-          const r = await fetch(`https://data-api.polymarket.com/trades?maker=${t.address}&limit=10`);
-          const d = await r.json();
-          if (Array.isArray(d)) results[t.address] = d;
-        } catch {}
-      }
-      setTrackerTrades(results);
+      try {
+        const r = await fetch("/api/top-traders", { cache: "no-store" });
+        const d = await r.json();
+        if (Array.isArray(d)) setTrackerTrades(d);
+      } catch {}
     };
     fetchTraders();
-    const id = setInterval(fetchTraders, 30000);
+    const id = setInterval(fetchTraders, 5000);
     return () => clearInterval(id);
   }, []);
 
@@ -191,47 +182,49 @@ export default function TweetsPage() {
               </div>
             </div>
 
-            {/* Top Traders — fixed */}
+            {/* Top Traders — live feed */}
             <div className="flex-[4] bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
-              <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
+              <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0 flex items-center justify-between">
                 <span className="text-xs font-bold text-[#e5e5e5]">Top Traders</span>
+                <span className="text-[10px] text-[#555555]">{trackerTrades.length} trades</span>
               </div>
               <div className="flex-1 overflow-y-auto p-1.5">
-                <div className="flex flex-col gap-1.5">
-                  {TOP_TRADERS.map((trader) => {
-                    const trades = trackerTrades[trader.address] || [];
-                    return (
-                      <div key={trader.address} className="rounded-lg bg-[#111111] border border-[#1a1a1a]/40 overflow-hidden">
-                        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[#1a1a1a]/30">
-                          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-[#3b82f6]/40 to-[#0ecb81]/40 flex items-center justify-center text-[8px] font-bold text-[#e5e5e5] shrink-0">
-                            {trader.name.charAt(0).toUpperCase()}
+                {trackerTrades.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-[#555555] text-xs">Loading trades...</div>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {trackerTrades.map((t: any, i: number) => {
+                      const ts = parseInt(t.timestamp || "0");
+                      const age = ts ? Math.floor(Date.now() / 1000) - ts : 0;
+                      const ageStr = age < 60 ? `${age}s` : age < 3600 ? `${Math.floor(age / 60)}m` : age < 86400 ? `${Math.floor(age / 3600)}h` : `${Math.floor(age / 86400)}d`;
+                      const isBuy = t.side === "BUY";
+                      return (
+                        <div key={i} className="flex gap-2.5 px-3 py-2 rounded-lg bg-[#111111] border border-[#1a1a1a]/40 hover:bg-[#141414] transition-colors"
+                          style={{ borderLeft: `2px solid ${isBuy ? "#0ecb81" : "#f6465d"}` }}>
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                            isBuy ? "bg-[#0ecb81]/15 text-[#0ecb81]" : "bg-[#f6465d]/15 text-[#f6465d]"
+                          }`}>
+                            {(t.wallet_name || "?").charAt(0).toUpperCase()}
                           </div>
-                          <span className="text-[11px] font-bold text-[#3b82f6]">@{trader.name}</span>
-                          <span className="text-[9px] text-[#555555] font-mono ml-auto">{trader.address.slice(0, 6)}...{trader.address.slice(-4)}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5 mb-0.5">
+                              <span className="text-[11px] font-bold text-[#3b82f6]">@{t.wallet_name}</span>
+                              <span className={`text-[10px] font-bold ${isBuy ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{t.side}</span>
+                              <span className="text-[10px] text-[#555555] ml-auto">{ageStr} ago</span>
+                            </div>
+                            <div className="text-[10px] text-[#b0b0b0]">
+                              <span className="text-[#e5e5e5] font-medium">{parseFloat(t.size || 0).toFixed(0)}</span>
+                              <span className="text-[#555555]"> shares </span>
+                              <span className="text-[#555555]">@ </span>
+                              <span className="text-[#e5e5e5]">{(parseFloat(t.price || 0) * 100).toFixed(1)}¢</span>
+                              {t.outcome && <span className={`ml-1.5 font-medium ${t.outcome === "Yes" ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{t.outcome}</span>}
+                            </div>
+                          </div>
                         </div>
-                        {trades.length === 0 ? (
-                          <div className="px-3 py-2 text-[10px] text-[#555555]">Loading trades...</div>
-                        ) : (
-                          trades.slice(0, 3).map((t: any, i: number) => {
-                            const side = t.side || (parseFloat(t.price || 0) > 0.5 ? "BUY" : "SELL");
-                            const ts = parseInt(t.timestamp || t.matchTime || "0");
-                            const age = ts ? Math.floor(Date.now() / 1000) - Math.floor(ts / 1000) : 0;
-                            const ageStr = age < 60 ? `${age}s` : age < 3600 ? `${Math.floor(age / 60)}m` : age < 86400 ? `${Math.floor(age / 3600)}h` : `${Math.floor(age / 86400)}d`;
-                            return (
-                              <div key={i} className="flex items-center px-3 py-1 text-[10px] border-b border-[#1a1a1a]/20 last:border-0">
-                                <span className={`font-bold w-7 ${side === "BUY" ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{side}</span>
-                                <span className="text-[#e5e5e5] tabular-nums">{parseFloat(t.size || 0).toFixed(0)}</span>
-                                <span className="text-[#555555] mx-1">@</span>
-                                <span className="text-[#e5e5e5] tabular-nums">{(parseFloat(t.price || 0) * 100).toFixed(1)}¢</span>
-                                <span className="text-[#555555] ml-auto">{ageStr}</span>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>

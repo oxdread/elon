@@ -1,0 +1,129 @@
+"""Poll top trader wallets for recent trades every 10 seconds.
+
+Saves to top_trader_trades table. Runs as daemon thread alongside the main fetcher.
+"""
+from __future__ import annotations
+
+import json
+import time
+import threading
+from typing import Optional
+
+import httpx
+import psycopg2
+
+TRADERS = [
+    {"name": "gustav4", "address": "0x471abf0558dcd381dcea2fdf54390760c9a30328"},
+    {"name": "prexpect", "address": "0xa59c570a9eca148da55f6e1f47a538c0c600bb62"},
+]
+
+POLL_INTERVAL = 10  # seconds
+_db_url: Optional[str] = None
+_started = False
+
+
+def set_db_url(url: str) -> None:
+    global _db_url
+    _db_url = url
+
+
+def start() -> None:
+    global _started
+    if _started:
+        return
+    _started = True
+    t = threading.Thread(target=_loop, name="top-traders", daemon=True)
+    t.start()
+
+
+def _get_conn():
+    conn = psycopg2.connect(_db_url)
+    conn.autocommit = True
+    return conn
+
+
+def _loop() -> None:
+    client = httpx.Client(timeout=10)
+    conn = _get_conn()
+    # Track last seen timestamp per wallet to avoid re-fetching old trades
+    last_ts: dict[str, int] = {}
+
+    while True:
+        try:
+            for trader in TRADERS:
+                try:
+                    r = client.get(
+                        "https://data-api.polymarket.com/trades",
+                        params={"maker": trader["address"], "limit": "20"},
+                    )
+                    if r.status_code != 200:
+                        continue
+
+                    trades = r.json()
+                    if not isinstance(trades, list):
+                        continue
+
+                    new_count = 0
+                    cur = conn.cursor()
+
+                    for t in trades:
+                        trade_id = t.get("id") or t.get("transactionHash") or f"{trader['address']}-{t.get('timestamp', 0)}-{t.get('price', 0)}"
+                        ts = int(t.get("timestamp") or t.get("matchTime") or 0)
+
+                        # Skip if we've seen this timestamp before (quick filter)
+                        prev = last_ts.get(trader["address"], 0)
+                        if ts <= prev and prev > 0:
+                            # Still try insert — ON CONFLICT handles duplicates
+                            pass
+
+                        try:
+                            cur.execute("""
+                                INSERT INTO top_trader_trades (wallet_address, wallet_name, trade_id, side, size, price, outcome, market, timestamp, raw)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (trade_id) DO NOTHING
+                            """, (
+                                trader["address"],
+                                trader["name"],
+                                str(trade_id),
+                                t.get("side", ""),
+                                float(t.get("size", 0)),
+                                float(t.get("price", 0)),
+                                t.get("outcome", ""),
+                                t.get("market", "") or t.get("conditionId", ""),
+                                ts,
+                                json.dumps(t),
+                            ))
+                            if cur.rowcount > 0:
+                                new_count += 1
+                        except Exception:
+                            pass
+
+                    cur.close()
+
+                    # Update last seen timestamp
+                    if trades:
+                        max_ts = max(int(t.get("timestamp") or t.get("matchTime") or 0) for t in trades)
+                        if max_ts > last_ts.get(trader["address"], 0):
+                            last_ts[trader["address"]] = max_ts
+
+                    if new_count > 0:
+                        print(f"[top-traders] {new_count} new trades for {trader['name']}")
+
+                except Exception as e:
+                    print(f"[top-traders] error fetching {trader['name']}: {e}")
+
+        except psycopg2.OperationalError:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            try:
+                conn = _get_conn()
+                print("[top-traders] reconnected to DB")
+            except Exception as e:
+                print(f"[top-traders] DB reconnect failed: {e}")
+
+        except Exception as e:
+            print(f"[top-traders] error: {e}")
+
+        time.sleep(POLL_INTERVAL)
