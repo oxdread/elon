@@ -45,13 +45,13 @@ export default function TweetHeatmap({ heatmapFrom, heatmapTo, compact }: { heat
     const isCurrentDay = dayIdx === nowDayIdx;
     const isFutureDay = dayIdx > nowDayIdx || nowDayIdx === -1;
     const isFutureHour = isCurrentDay && hour > nowHour;
-    if (isFutureDay || isFutureHour) return "bg-neutral-700/20";
-    if (val === 0) return "bg-blue-900/50";
-    if (val >= 10) return "bg-blue-300/80";
-    if (val >= 5) return "bg-blue-400/70";
-    if (val >= 3) return "bg-blue-500/60";
-    if (val >= 1) return "bg-blue-600/50";
-    return "bg-blue-900/50";
+    if (isFutureDay || isFutureHour) return "bg-slate-800/30";
+    if (val === 0) return "bg-slate-800/40";
+    if (val >= 10) return "bg-sky-400/70";
+    if (val >= 5) return "bg-sky-500/60";
+    if (val >= 3) return "bg-sky-600/50";
+    if (val >= 1) return "bg-sky-700/50";
+    return "bg-slate-800/40";
   };
 
   const trends = dayTotals.map((total, i) => {
