@@ -85,7 +85,7 @@ export default function TweetHeatmap({ heatmapFrom, heatmapTo, compact }: { heat
                 <td key={dayIdx}
                   className={`text-center ${cellBg(val, dayIdx, hour)} ${hour === nowHour && dayIdx === nowDayIdx ? "ring-1 ring-amber-500" : ""}`}
                   style={{ padding: cellPad }}>
-                  <span className={val > 0 ? "text-white font-bold" : "text-neutral-600"}>{val}</span>
+                  <span className={val > 0 ? "text-white font-bold" : "text-neutral-500"}>{val}</span>
                 </td>
               ))}
             </tr>
