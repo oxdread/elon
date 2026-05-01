@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Twitter, BarChart3, PieChart, Wallet, Settings,
+  AtSign, BarChart3, PieChart, Wallet, Settings,
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { href: "/tweets", icon: Twitter, label: "Tweets" },
+  { href: "/tweets", icon: AtSign, label: "Tweets" },
   { href: "/trade", icon: BarChart3, label: "Trade" },
   { href: "/portfolio", icon: PieChart, label: "Portfolio" },
   { href: "/wallets", icon: Wallet, label: "Wallets" },
