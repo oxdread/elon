@@ -18,7 +18,6 @@ export default function SettingsPage() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [showImport, setShowImport] = useState(false);
   const [privateKeyInput, setPrivateKeyInput] = useState("");
-  const [funderInput, setFunderInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showKey, setShowKey] = useState<Record<number, boolean>>({});
@@ -146,7 +145,7 @@ export default function SettingsPage() {
       const d = await res.json();
       if (d.error) { setError(d.error); setLoading(false); return; }
 
-      const funder = funderInput.trim() || d.funder || null;
+      const funder = d.funder || null;
       const newWallet: WalletData = {
         key, address: d.address, funder,
         balance: null, portfolioValue: null, positions: [], trades: [],
@@ -160,7 +159,6 @@ export default function SettingsPage() {
 
       setActiveIdx(wallets.length);
       setPrivateKeyInput("");
-      setFunderInput("");
       setShowImport(false);
       fetchWalletData(key, funder, wallets.length);
     } catch (e) {
@@ -235,9 +233,6 @@ export default function SettingsPage() {
               {error && <div className="text-[10px] text-[#f6465d] bg-[#f6465d]/10 p-1.5 rounded">{error}</div>}
               <input type="password" value={privateKeyInput} onChange={(e) => setPrivateKeyInput(e.target.value)}
                 placeholder="Private key (0x...)"
-                className="w-full bg-[#0a0a0a] border border-[#1a1a1a]/50 rounded-md px-2.5 py-1.5 text-[11px] text-[#e5e5e5] font-mono focus:outline-none focus:border-[#3b82f6]/50" />
-              <input type="text" value={funderInput} onChange={(e) => setFunderInput(e.target.value)}
-                placeholder="Funder address (optional)"
                 className="w-full bg-[#0a0a0a] border border-[#1a1a1a]/50 rounded-md px-2.5 py-1.5 text-[11px] text-[#e5e5e5] font-mono focus:outline-none focus:border-[#3b82f6]/50" />
               <div className="flex gap-1.5">
                 <button onClick={importWallet} disabled={loading || !privateKeyInput.trim()}
