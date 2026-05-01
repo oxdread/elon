@@ -65,7 +65,7 @@ export default function TweetHeatmap({ heatmapFrom, heatmapTo, compact }: { heat
 
   return (
     <div className="h-full overflow-hidden">
-      <table className={`w-full h-full tabular-nums border-separate`} style={{ borderSpacing: cellSize, fontSize }}>
+      <table className={`w-full tabular-nums border-separate`} style={{ borderSpacing: cellSize, fontSize }}>
         <thead>
           <tr>
             <th className="w-12"></th>

@@ -122,7 +122,7 @@ export default function TweetsPage() {
         <div className="flex-1 flex gap-2 min-h-0">
 
           {/* Left: Tweets Activity */}
-          <div className="w-[33%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-y-auto">
+          <div className="w-[33%] shrink-0 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] overflow-y-auto p-2">
               <TweetHeatmap heatmapFrom={fromDate} heatmapTo={toDate} compact />
           </div>
 
