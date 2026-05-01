@@ -4,13 +4,14 @@ type Event = { id: string; slug: string; title: string; start_date: string; end_
 
 export function shortSlug(slug: string): string {
   const m = slug.match(/(\w+)-(\d+)-(\w+)-(\d+)$/);
-  if (m) return `${m[1].charAt(0).toUpperCase() + m[1].slice(1)} ${m[2]} - ${m[3].charAt(0).toUpperCase() + m[3].slice(1)} ${m[4]}`;
-  return slug;
+  if (!m || !m[1] || !m[3]) return slug;
+  return `${m[1].charAt(0).toUpperCase() + m[1].slice(1)} ${m[2]} - ${m[3].charAt(0).toUpperCase() + m[3].slice(1)} ${m[4]}`;
 }
 
 export function eventDurationDays(ev: Event): number {
+  if (!ev?.slug) return 0;
   const m = ev.slug.match(/(\w+)-(\d+)-(\w+)-(\d+)$/);
-  if (!m) return 0;
+  if (!m || !m[1] || !m[3]) return 0;
   const months: Record<string, number> = {
     january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,
     july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
