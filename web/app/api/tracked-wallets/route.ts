@@ -26,7 +26,6 @@ export async function POST(req: NextRequest) {
     // Remove wallet
     if (action === "remove") {
       await query("DELETE FROM tracked_wallets WHERE address = $1", [addr]);
-      // Delete image
       try {
         const imgPath = path.join(process.cwd(), "public", "traders", `${addr}.jpg`);
         if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
@@ -34,15 +33,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: "ok" });
     }
 
+    // Update wallet name
+    if (action === "update") {
+      const newName = body.name || addr.slice(0, 8);
+      await query("UPDATE tracked_wallets SET name = $1 WHERE address = $2", [newName, addr]);
+      return NextResponse.json({ status: "ok" });
+    }
+
     // Add wallet — fetch profile from Gamma API
-    let name = addr.slice(0, 8);
+    let name = body.name || addr.slice(0, 8);
     let profileImage = "";
 
     try {
       const profileRes = await fetch(`https://gamma-api.polymarket.com/profiles/${addr}`);
       if (profileRes.ok) {
         const profile = await profileRes.json();
-        name = profile.name || profile.pseudonym || profile.username || name;
+        if (!body.name) name = profile.name || profile.pseudonym || profile.username || name;
         profileImage = profile.profileImage || profile.pfp || "";
       }
     } catch {}
