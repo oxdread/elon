@@ -8,13 +8,16 @@ export async function GET() {
     return NextResponse.json(cache.data);
   }
   try {
+    const oneDayAgo = Math.floor(Date.now() / 1000) - 86400;
     const { rows } = await query(
       `SELECT t.wallet_name, t.wallet_address, t.side, t.size, t.price, t.outcome, t.market, t.timestamp,
               w.profile_image
        FROM top_trader_trades t
        LEFT JOIN tracked_wallets w ON w.address = t.wallet_address
+       WHERE t.timestamp >= $1
        ORDER BY t.timestamp DESC
-       LIMIT 30`
+       LIMIT 30`,
+      [oneDayAgo]
     );
     const data = rows.map((r: any) => {
       const parts = (r.market || "").split("|");
