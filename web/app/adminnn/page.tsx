@@ -230,7 +230,7 @@ export default function AdminPage() {
             <div key={w.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a]">
               <div className="w-11 h-11 rounded-full bg-[#1a1a1a] shrink-0 overflow-hidden">
                 {w.profile_image ? (
-                  <img src={`/traders/${w.address}.${w.profile_image}?t=${Date.now()}`} alt="" className="w-full h-full object-cover" />
+                  <img src={`/api/trader-image?addr=${w.address}`} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-sm font-bold text-[#555555]">
                     {(w.name || "?").charAt(0).toUpperCase()}
