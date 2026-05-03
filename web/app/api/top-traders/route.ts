@@ -19,7 +19,7 @@ export async function GET() {
     // Add local image path
     const data = rows.map((r: any) => ({
       ...r,
-      avatar: r.profile_image ? `/traders/${r.wallet_address}.jpg` : null,
+      avatar: r.profile_image ? `/traders/${r.wallet_address}.${r.profile_image}` : null,
     }));
     cache = { data, ts: Date.now() };
     return NextResponse.json(data);

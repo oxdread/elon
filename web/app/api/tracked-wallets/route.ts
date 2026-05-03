@@ -28,8 +28,11 @@ export async function POST(req: NextRequest) {
       await query("DELETE FROM top_trader_trades WHERE wallet_address = $1", [addr]);
       await query("DELETE FROM tracked_wallets WHERE address = $1", [addr]);
       try {
-        const imgPath = path.join(process.cwd(), "public", "traders", `${addr}.jpg`);
-        if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+        const dir = path.join(process.cwd(), "public", "traders");
+        for (const ext of ["jpg", "png", "webp"]) {
+          const imgPath = path.join(dir, `${addr}.${ext}`);
+          if (fs.existsSync(imgPath)) fs.unlinkSync(imgPath);
+        }
       } catch {}
       return NextResponse.json({ status: "ok" });
     }
@@ -70,7 +73,12 @@ export async function POST(req: NextRequest) {
           const buffer = Buffer.from(await imgRes.arrayBuffer());
           const dir = path.join(process.cwd(), "public", "traders");
           if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-          fs.writeFileSync(path.join(dir, `${addr}.jpg`), buffer);
+          // Detect extension from content-type or URL
+          const ct = imgRes.headers.get("content-type") || "";
+          const ext = ct.includes("webp") ? "webp" : ct.includes("png") ? "png" : "jpg";
+          // Save with correct extension and also save the extension in DB
+          fs.writeFileSync(path.join(dir, `${addr}.${ext}`), buffer);
+          profileImage = ext; // store just the extension
         }
       } catch {}
     }
