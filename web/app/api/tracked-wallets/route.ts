@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
 
     // Remove wallet
     if (action === "remove") {
+      await query("DELETE FROM top_trader_trades WHERE wallet_address = $1", [addr]);
       await query("DELETE FROM tracked_wallets WHERE address = $1", [addr]);
       try {
         const imgPath = path.join(process.cwd(), "public", "traders", `${addr}.jpg`);
