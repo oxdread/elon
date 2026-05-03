@@ -10,21 +10,21 @@ export async function GET() {
   try {
     const { rows } = await query(
       `SELECT t.wallet_name, t.wallet_address, t.side, t.size, t.price, t.outcome, t.market, t.timestamp,
-              w.profile_image,
-              b.label as bracket_label,
-              e.slug as event_slug
+              w.profile_image
        FROM top_trader_trades t
        LEFT JOIN tracked_wallets w ON w.address = t.wallet_address
-       LEFT JOIN brackets b ON b.id = t.market
-       LEFT JOIN events e ON e.id = b.event_id
        ORDER BY t.timestamp DESC
        LIMIT 30`
     );
-    // Add local image path
-    const data = rows.map((r: any) => ({
-      ...r,
-      avatar: r.profile_image ? `/api/trader-image?addr=${r.wallet_address}` : null,
-    }));
+    const data = rows.map((r: any) => {
+      const parts = (r.market || "").split("|");
+      return {
+        ...r,
+        bracket_label: parts[0] || "",
+        event_slug: parts[1] || "",
+        avatar: r.profile_image ? `/api/trader-image?addr=${r.wallet_address}` : null,
+      };
+    });
     cache = { data, ts: Date.now() };
     return NextResponse.json(data);
   } catch (e) {

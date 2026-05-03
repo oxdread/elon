@@ -58,6 +58,27 @@ def _get_wallets(conn) -> list[dict]:
     return []
 
 
+def _get_our_tokens(conn) -> dict[str, dict]:
+    """Get all token IDs from our active brackets. Returns {token_id: {bracket_label, event_slug}}."""
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT b.yes_token_id, b.no_token_id, b.label, e.slug
+            FROM brackets b
+            JOIN events e ON e.id = b.event_id
+            WHERE e.active = TRUE AND (b.yes_token_id IS NOT NULL OR b.no_token_id IS NOT NULL)
+        """)
+        tokens = {}
+        for r in cur.fetchall():
+            info = {"label": r[2], "slug": r[3]}
+            if r[0]: tokens[r[0]] = info
+            if r[1]: tokens[r[1]] = info
+        cur.close()
+        return tokens
+    except Exception:
+        return {}
+
+
 def _loop() -> None:
     client = httpx.Client(timeout=10)
     conn = _get_conn()
@@ -66,6 +87,7 @@ def _loop() -> None:
     while True:
         try:
             wallets = _get_wallets(conn)
+            our_tokens = _get_our_tokens(conn)
 
             for trader in wallets:
                 try:
@@ -84,6 +106,12 @@ def _loop() -> None:
                     cur = conn.cursor()
 
                     for t in trades:
+                        # Only save trades for our Elon tweet markets
+                        asset = str(t.get("asset", ""))
+                        token_info = our_tokens.get(asset)
+                        if not token_info:
+                            continue
+
                         trade_id = t.get("id") or t.get("transactionHash") or f"{trader['address']}-{t.get('timestamp', 0)}-{t.get('price', 0)}"
                         ts = int(t.get("timestamp") or t.get("matchTime") or 0)
 
@@ -100,7 +128,7 @@ def _loop() -> None:
                                 float(t.get("size", 0)),
                                 float(t.get("price", 0)),
                                 t.get("outcome", ""),
-                                t.get("market", "") or t.get("conditionId", ""),
+                                token_info["label"] + "|" + token_info["slug"],
                                 ts,
                                 json.dumps(t),
                             ))
