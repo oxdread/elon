@@ -93,7 +93,7 @@ def _loop() -> None:
                 try:
                     r = client.get(
                         "https://data-api.polymarket.com/trades",
-                        params={"maker": trader["address"], "limit": "20"},
+                        params={"maker": trader["address"], "limit": "100"},
                     )
                     if r.status_code != 200:
                         continue
