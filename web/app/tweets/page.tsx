@@ -188,42 +188,41 @@ export default function TweetsPage() {
                 <span className="text-xs font-bold text-[#e5e5e5]">Top Traders</span>
                 <span className="text-[10px] text-[#555555]">{trackerTrades.length} trades</span>
               </div>
-              <div className="flex-1 overflow-y-auto p-1.5">
+              <div className="flex-1 overflow-y-auto">
                 {trackerTrades.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-[#555555] text-xs">Loading trades...</div>
+                  <div className="flex items-center justify-center h-full text-[#555555] text-xs">No trades yet</div>
                 ) : (
-                  <div className="flex flex-col gap-1">
+                  <div className="divide-y divide-[#1a1a1a]/40">
                     {trackerTrades.map((t: any, i: number) => {
                       const ts = parseInt(t.timestamp || "0");
                       const age = ts ? Math.floor(Date.now() / 1000) - ts : 0;
                       const ageStr = age < 60 ? `${age}s` : age < 3600 ? `${Math.floor(age / 60)}m` : age < 86400 ? `${Math.floor(age / 3600)}h` : `${Math.floor(age / 86400)}d`;
                       const isBuy = t.side === "BUY";
+                      const bracket = t.bracket_label || "";
                       return (
-                        <div key={i} className="flex gap-2.5 px-3 py-2 rounded-lg bg-[#111111] border border-[#1a1a1a]/40 hover:bg-[#141414] transition-colors"
-                          style={{ borderLeft: `2px solid ${isBuy ? "#0ecb81" : "#f6465d"}` }}>
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 overflow-hidden ${
-                            isBuy ? "bg-[#0ecb81]/15 text-[#0ecb81]" : "bg-[#f6465d]/15 text-[#f6465d]"
-                          }`}>
+                        <div key={i} className="flex items-center gap-2.5 px-3 py-2 hover:bg-[#111] transition-colors">
+                          <div className="w-7 h-7 rounded-full bg-[#1a1a1a] shrink-0 overflow-hidden">
                             {t.avatar ? (
                               <img src={t.avatar} alt="" className="w-full h-full object-cover" />
                             ) : (
-                              (t.wallet_name || "?").charAt(0).toUpperCase()
+                              <div className="w-full h-full flex items-center justify-center text-[9px] font-bold text-[#555555]">
+                                {(t.wallet_name || "?").charAt(0).toUpperCase()}
+                              </div>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 mb-0.5">
-                              <span className="text-[11px] font-bold text-[#3b82f6]">@{t.wallet_name}</span>
-                              <span className={`text-[10px] font-bold ${isBuy ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{t.side}</span>
-                              <span className="text-[10px] text-[#555555] ml-auto">{ageStr} ago</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[11px] font-medium text-[#e5e5e5]">{t.wallet_name}</span>
+                              <span className={`text-[10px] ${isBuy ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{isBuy ? "bought" : "sold"}</span>
+                              <span className="text-[10px] text-[#e5e5e5] tabular-nums">{parseFloat(t.size || 0).toFixed(0)}</span>
+                              {bracket && <span className="text-[10px] text-[#808080]">on {bracket}</span>}
                             </div>
-                            <div className="text-[10px] text-[#b0b0b0]">
-                              <span className="text-[#e5e5e5] font-medium">{parseFloat(t.size || 0).toFixed(0)}</span>
-                              <span className="text-[#555555]"> shares </span>
-                              <span className="text-[#555555]">@ </span>
-                              <span className="text-[#e5e5e5]">{(parseFloat(t.price || 0) * 100).toFixed(1)}¢</span>
-                              {t.outcome && <span className={`ml-1.5 font-medium ${t.outcome === "Yes" ? "text-[#0ecb81]" : "text-[#f6465d]"}`}>{t.outcome}</span>}
+                            <div className="text-[9px] text-[#555555]">
+                              {(parseFloat(t.price || 0) * 100).toFixed(1)}¢
+                              {t.outcome && <span className="ml-1">{t.outcome}</span>}
                             </div>
                           </div>
+                          <span className="text-[9px] text-[#555555] shrink-0">{ageStr}</span>
                         </div>
                       );
                     })}

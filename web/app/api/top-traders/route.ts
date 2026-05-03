@@ -10,9 +10,13 @@ export async function GET() {
   try {
     const { rows } = await query(
       `SELECT t.wallet_name, t.wallet_address, t.side, t.size, t.price, t.outcome, t.market, t.timestamp,
-              w.profile_image
+              w.profile_image,
+              b.label as bracket_label,
+              e.slug as event_slug
        FROM top_trader_trades t
        LEFT JOIN tracked_wallets w ON w.address = t.wallet_address
+       LEFT JOIN brackets b ON b.id = t.market
+       LEFT JOIN events e ON e.id = b.event_id
        ORDER BY t.timestamp DESC
        LIMIT 30`
     );
