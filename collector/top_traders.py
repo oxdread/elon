@@ -45,7 +45,7 @@ def _get_conn():
 
 
 def _get_wallets(conn) -> list[dict]:
-    """Read tracked wallets from DB. Falls back to defaults if empty."""
+    """Read tracked wallets from DB."""
     try:
         cur = conn.cursor()
         cur.execute("SELECT address, name FROM tracked_wallets ORDER BY added_at")
@@ -55,7 +55,7 @@ def _get_wallets(conn) -> list[dict]:
             return [{"address": r[0], "name": r[1] or r[0][:8]} for r in rows]
     except Exception:
         pass
-    return DEFAULT_TRADERS
+    return []
 
 
 def _loop() -> None:
