@@ -40,18 +40,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: "ok" });
     }
 
-    // Add wallet — fetch profile from Gamma API
+    // Add wallet — try to scrape profile from Polymarket page
     let name = body.name || addr.slice(0, 8);
     let profileImage = "";
+    const username = body.username || "";
 
-    try {
-      const profileRes = await fetch(`https://gamma-api.polymarket.com/profiles/${addr}`);
-      if (profileRes.ok) {
-        const profile = await profileRes.json();
-        if (!body.name) name = profile.name || profile.pseudonym || profile.username || name;
-        profileImage = profile.profileImage || profile.pfp || "";
-      }
-    } catch {}
+    // If username provided, scrape profile from polymarket.com/@username
+    if (username) {
+      try {
+        const pageRes = await fetch(`https://polymarket.com/@${username}`);
+        if (pageRes.ok) {
+          const html = await pageRes.text();
+          const imgMatch = html.match(/"profileImage":"([^"]+)"/);
+          if (imgMatch) profileImage = imgMatch[1];
+          if (!body.name) {
+            const nameMatch = html.match(/"username":"([^"]+)"/);
+            if (nameMatch) name = nameMatch[1];
+          }
+        }
+      } catch {}
+    }
 
     // Download profile image
     if (profileImage) {

@@ -22,6 +22,7 @@ export default function AdminPage() {
   const [wallets, setWallets] = useState<any[]>([]);
   const [addressInput, setAddressInput] = useState("");
   const [nameInput, setNameInput] = useState("");
+  const [usernameInput, setUsernameInput] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -88,7 +89,7 @@ export default function AdminPage() {
       // First add the wallet (scrapes profile from Polymarket)
       const r = await fetch("/api/tracked-wallets", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address: addr, name: nameInput.trim() || undefined }),
+        body: JSON.stringify({ address: addr, name: nameInput.trim() || undefined, username: usernameInput.trim() || undefined }),
       });
       const d = await r.json();
 
@@ -104,6 +105,7 @@ export default function AdminPage() {
         setStatus(`Added: ${d.name || addr}`);
         setAddressInput("");
         setNameInput("");
+        setUsernameInput("");
         setImageFile(null);
         setImagePreview(null);
         if (fileRef.current) fileRef.current.value = "";
@@ -196,6 +198,9 @@ export default function AdminPage() {
             <input type="text" value={addressInput} onChange={(e) => setAddressInput(e.target.value)}
               placeholder="0x... wallet address"
               className="w-full bg-[#111] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-[#e5e5e5] font-mono focus:outline-none focus:border-[#3b82f6]" />
+            <input type="text" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)}
+              placeholder="Polymarket username (e.g. gustav4) — for profile pic scraping"
+              className="w-full bg-[#111] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-[#e5e5e5] focus:outline-none focus:border-[#3b82f6]" />
             <div className="flex gap-2">
               <input type="text" value={nameInput} onChange={(e) => setNameInput(e.target.value)}
                 placeholder="Display name (optional, auto-fetched)"
