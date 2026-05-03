@@ -6,6 +6,7 @@ Saves trades to top_trader_trades table. Runs as daemon thread.
 from __future__ import annotations
 
 import json
+import re
 import time
 import threading
 from typing import Optional
@@ -19,7 +20,7 @@ DEFAULT_TRADERS = [
     {"name": "prexpect", "address": "0xa59c570a9eca148da55f6e1f47a538c0c600bb62"},
 ]
 
-POLL_INTERVAL = 10
+POLL_INTERVAL = 30
 _db_url: Optional[str] = None
 _started = False
 
@@ -58,42 +59,20 @@ def _get_wallets(conn) -> list[dict]:
     return []
 
 
-def _get_our_tokens(conn) -> dict[str, dict]:
-    """Get all token IDs from our active brackets. Returns {token_id: {bracket_label, event_slug}}."""
-    try:
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT b.yes_token_id, b.no_token_id, b.label, e.slug
-            FROM brackets b
-            JOIN events e ON e.id = b.event_id
-            WHERE e.active = TRUE AND (b.yes_token_id IS NOT NULL OR b.no_token_id IS NOT NULL)
-        """)
-        tokens = {}
-        for r in cur.fetchall():
-            info = {"label": r[2], "slug": r[3]}
-            if r[0]: tokens[r[0]] = info
-            if r[1]: tokens[r[1]] = info
-        cur.close()
-        return tokens
-    except Exception:
-        return {}
-
-
 def _loop() -> None:
-    client = httpx.Client(timeout=10)
+    client = httpx.Client(timeout=10, headers={"User-Agent": "Mozilla/5.0"})
     conn = _get_conn()
     last_ts: dict[str, int] = {}
 
     while True:
         try:
             wallets = _get_wallets(conn)
-            our_tokens = _get_our_tokens(conn)
 
             for trader in wallets:
                 try:
                     r = client.get(
-                        "https://data-api.polymarket.com/trades",
-                        params={"maker": trader["address"], "limit": "100"},
+                        "https://data-api.polymarket.com/activity",
+                        params={"user": trader["address"], "limit": "50"},
                     )
                     if r.status_code != 200:
                         continue
@@ -106,14 +85,18 @@ def _loop() -> None:
                     cur = conn.cursor()
 
                     for t in trades:
-                        # Only save trades for our Elon tweet markets
-                        asset = str(t.get("asset", ""))
-                        token_info = our_tokens.get(asset)
-                        if not token_info:
+                        # Filter: only Elon tweet trades
+                        title = t.get("title", "")
+                        if "elon" not in title.lower() or "tweet" not in title.lower():
                             continue
 
-                        trade_id = t.get("id") or t.get("transactionHash") or f"{trader['address']}-{t.get('timestamp', 0)}-{t.get('price', 0)}"
-                        ts = int(t.get("timestamp") or t.get("matchTime") or 0)
+                        trade_id = t.get("transactionHash") or t.get("id") or f"{trader['address']}-{t.get('timestamp', 0)}-{t.get('price', 0)}"
+                        ts = int(t.get("timestamp") or 0)
+
+                        # Extract bracket label from title (e.g. "Will Elon Musk post 120-139 tweets..." → "120-139")
+                        bracket_match = re.search(r'post\s+([<>]?\d[\d\-]*)\s+tweet', title)
+                        bracket_label = bracket_match.group(1) if bracket_match else ""
+                        event_slug = t.get("eventSlug", "")
 
                         try:
                             cur.execute("""
@@ -128,7 +111,7 @@ def _loop() -> None:
                                 float(t.get("size", 0)),
                                 float(t.get("price", 0)),
                                 t.get("outcome", ""),
-                                token_info["label"] + "|" + token_info["slug"],
+                                bracket_label + "|" + event_slug,
                                 ts,
                                 json.dumps(t),
                             ))
