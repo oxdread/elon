@@ -73,12 +73,12 @@ export async function POST(req: NextRequest) {
           const buffer = Buffer.from(await imgRes.arrayBuffer());
           const dir = path.join(process.cwd(), "public", "traders");
           if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-          // Detect extension from content-type or URL
-          const ct = imgRes.headers.get("content-type") || "";
-          const ext = ct.includes("webp") ? "webp" : ct.includes("png") ? "png" : "jpg";
-          // Save with correct extension and also save the extension in DB
+          // Detect actual format from file header bytes
+          let ext = "jpg";
+          if (buffer[0] === 0x89 && buffer[1] === 0x50) ext = "png";
+          else if (buffer[0] === 0x52 && buffer[1] === 0x49) ext = "webp";
           fs.writeFileSync(path.join(dir, `${addr}.${ext}`), buffer);
-          profileImage = ext; // store just the extension
+          profileImage = ext;
         }
       } catch {}
     }
