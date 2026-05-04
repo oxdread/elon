@@ -73,17 +73,30 @@ export default function TweetsPage() {
     return () => clearInterval(id);
   }, []);
 
-  // Fetch flight status
+  // Fetch flight status directly from OpenSky (browser-side, avoids VPS IP block)
   useEffect(() => {
     const fetchFlight = async () => {
       try {
-        const r = await fetch("/api/flight", { cache: "no-store" });
+        const r = await fetch("https://opensky-network.org/api/states/all?icao24=a835af&icao24=a2f8db");
+        if (!r.ok) return;
         const d = await r.json();
-        if (Array.isArray(d)) setFlightData(d);
+        const states = d.states || [];
+        const jets = states.length > 0
+          ? states.map((s: any) => ({
+              icao24: s[0],
+              callsign: (s[1] || "").trim(),
+              flying: !s[8],
+              lastUpdate: d.time,
+            }))
+          : [
+              { icao24: "a835af", callsign: "N628TS", flying: false, lastUpdate: d.time },
+              { icao24: "a2f8db", callsign: "N272BG", flying: false, lastUpdate: d.time },
+            ];
+        setFlightData(jets);
       } catch {}
     };
     fetchFlight();
-    const id = setInterval(fetchFlight, 60000);
+    const id = setInterval(fetchFlight, 300000); // 5 min
     return () => clearInterval(id);
   }, []);
 
