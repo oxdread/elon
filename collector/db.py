@@ -85,6 +85,22 @@ def init_db(conn) -> None:
                 added_at INT DEFAULT 0
             )
         """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS elon_flights (
+                id SERIAL PRIMARY KEY,
+                icao24 TEXT,
+                callsign TEXT,
+                on_ground BOOLEAN,
+                latitude NUMERIC,
+                longitude NUMERIC,
+                altitude NUMERIC,
+                velocity NUMERIC,
+                heading NUMERIC,
+                origin TEXT,
+                ts INT,
+                raw JSONB
+            )
+        """)
     conn.commit()
 
 

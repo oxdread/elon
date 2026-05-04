@@ -16,7 +16,7 @@ import threading
 import httpx
 from dotenv import load_dotenv
 
-from collector import clob_feed, twitter_stream, user_feed, top_traders
+from collector import clob_feed, twitter_stream, user_feed, top_traders, flight_tracker
 from collector.cache_collector import start_cache_collector
 from collector.db import (
     connect, init_db, upsert_event, upsert_bracket, get_brackets,
@@ -206,6 +206,11 @@ def main():
     top_traders.set_db_url(db_url)
     top_traders.start()
     print("[main] top traders collector started")
+
+    # --- Start flight tracker ---
+    flight_tracker.set_db_url(db_url)
+    flight_tracker.start()
+    print("[main] flight tracker started")
 
     # --- Main polling loop ---
     last_discovery = time.time()

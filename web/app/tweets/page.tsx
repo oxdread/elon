@@ -17,6 +17,7 @@ export default function TweetsPage() {
   const [mounted, setMounted] = useState(false);
   const [now, setNow] = useState(0);
   const [trackerTrades, setTrackerTrades] = useState<any[]>([]);
+  const [flightData, setFlightData] = useState<any[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -69,6 +70,20 @@ export default function TweetsPage() {
     };
     fetchTraders();
     const id = setInterval(fetchTraders, 5000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Fetch flight status
+  useEffect(() => {
+    const fetchFlight = async () => {
+      try {
+        const r = await fetch("/api/flight", { cache: "no-store" });
+        const d = await r.json();
+        if (Array.isArray(d)) setFlightData(d);
+      } catch {}
+    };
+    fetchFlight();
+    const id = setInterval(fetchFlight, 60000);
     return () => clearInterval(id);
   }, []);
 
@@ -266,13 +281,40 @@ export default function TweetsPage() {
             {/* Flight Tracker */}
             <div className="flex-1 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a] flex flex-col overflow-hidden min-h-0">
               <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
-                <span className="text-xs font-bold text-[#e5e5e5]">Flight Tracker</span>
+                <span className="text-xs font-bold text-[#e5e5e5]">Elon Jet</span>
               </div>
-              <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="text-2xl mb-1 text-[#1a1a1a]">&#9992;</div>
-                  <div className="text-[11px] text-[#555555]">Coming soon</div>
-                </div>
+              <div className="flex-1 flex flex-col justify-center p-3">
+                {flightData.length === 0 ? (
+                  <div className="text-center text-[#555555] text-xs">Checking...</div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {flightData.map((jet: any) => {
+                      const age = jet.lastUpdate ? Math.floor(Date.now() / 1000) - jet.lastUpdate : 0;
+                      const ageStr = age < 60 ? `${age}s` : age < 3600 ? `${Math.floor(age / 60)}m` : `${Math.floor(age / 3600)}h`;
+                      const name = jet.icao24 === "a835af" ? "N628TS" : jet.icao24 === "a2f8db" ? "N272BG" : jet.callsign || jet.icao24;
+                      return (
+                        <div key={jet.icao24} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-[#111] border border-[#1a1a1a]/40">
+                          {jet.flying ? (
+                            <div className="w-8 h-8 rounded-full bg-[#0ecb81]/10 flex items-center justify-center">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#0ecb81] -rotate-45"><path d="M2 16l6-3 2-8 4 1-1 7 5 2 4-2v3l-4 2-1 3h-3l1-3-5-2-3 5-4-1z" fill="currentColor"/></svg>
+                            </div>
+                          ) : (
+                            <div className="w-8 h-8 rounded-full bg-[#555555]/10 flex items-center justify-center">
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-[#555555]"><path d="M2 16l6-3 2-8 4 1-1 7 5 2 4-2v3l-4 2-1 3h-3l1-3-5-2-3 5-4-1z" fill="currentColor"/></svg>
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <div className="text-[11px] font-bold text-[#e5e5e5]">{name}</div>
+                            <div className={`text-[10px] font-medium ${jet.flying ? "text-[#0ecb81]" : "text-[#555555]"}`}>
+                              {jet.flying ? "In Flight" : "Grounded"}
+                            </div>
+                          </div>
+                          <span className="text-[9px] text-[#555555]">{ageStr} ago</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
