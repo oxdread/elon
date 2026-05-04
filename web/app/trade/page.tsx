@@ -721,6 +721,7 @@ export default function TradePage() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
                                 <span className="text-xs font-bold text-[#e5e5e5]">Elon Musk</span>
+                                <img src="/twitterblue.png" alt="✓" className="w-3.5 h-3.5 inline-block" />
                                 <span className="text-[10px] text-[#555555] ml-auto">{ageStr}</span>
                               </div>
                               <p className="text-xs text-[#b0b0b0] leading-relaxed break-words">{t.text}</p>
