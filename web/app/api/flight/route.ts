@@ -1,34 +1,22 @@
 import { NextResponse } from "next/server";
-import { query } from "@/lib/db";
-
-let cache: { data: unknown; ts: number } | null = null;
 
 export async function GET() {
-  if (cache && Date.now() - cache.ts < 30000) {
-    return NextResponse.json(cache.data);
-  }
   try {
-    // Get latest status per jet
-    const { rows } = await query(
-      `SELECT DISTINCT ON (icao24)
-         icao24, callsign, on_ground, latitude, longitude, altitude, velocity, heading, ts
-       FROM elon_flights
-       ORDER BY icao24, ts DESC`
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000);
+
+    const r = await fetch(
+      "https://opensky-network.org/api/states/all?icao24=a835af&icao24=a2f8db",
+      { signal: controller.signal, headers: { "User-Agent": "Mozilla/5.0" } }
     );
-    const jets = rows.map((r: any) => ({
-      icao24: r.icao24,
-      callsign: r.callsign,
-      flying: !r.on_ground,
-      lat: r.latitude,
-      lon: r.longitude,
-      altitude: r.altitude,
-      velocity: r.velocity,
-      heading: r.heading,
-      lastUpdate: r.ts,
-    }));
-    cache = { data: jets, ts: Date.now() };
-    return NextResponse.json(jets);
-  } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 });
+    clearTimeout(timeout);
+
+    if (!r.ok) return NextResponse.json({ states: null, time: Math.floor(Date.now() / 1000) });
+
+    const d = await r.json();
+    return NextResponse.json(d);
+  } catch {
+    // OpenSky unreachable — return grounded status
+    return NextResponse.json({ states: null, time: Math.floor(Date.now() / 1000) });
   }
 }

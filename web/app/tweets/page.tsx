@@ -73,12 +73,11 @@ export default function TweetsPage() {
     return () => clearInterval(id);
   }, []);
 
-  // Fetch flight status directly from OpenSky (browser-side, avoids VPS IP block)
+  // Fetch flight status via our API proxy (OpenSky has CORS + blocks AWS IPs)
   useEffect(() => {
     const fetchFlight = async () => {
       try {
-        const r = await fetch("https://opensky-network.org/api/states/all?icao24=a835af&icao24=a2f8db");
-        if (!r.ok) return;
+        const r = await fetch("/api/flight", { cache: "no-store" });
         const d = await r.json();
         const states = d.states || [];
         const jets = states.length > 0
@@ -96,7 +95,7 @@ export default function TweetsPage() {
       } catch {}
     };
     fetchFlight();
-    const id = setInterval(fetchFlight, 300000); // 5 min
+    const id = setInterval(fetchFlight, 300000);
     return () => clearInterval(id);
   }, []);
 
